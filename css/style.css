@@ -252,3 +252,12 @@ body.admin { background: #f3f4f6; font-family: var(--ui-font); color: #111827; h
 }
 .w-leave-type { color: #fff; font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: 999px; }
 .w-leave-range { font-size: 12px; color: var(--ui-muted); }
+
+/* ---------- admin: VA paste ---------- */
+.page-view .box.va-box { max-width: 1200px; }
+.va-paste { min-height: 140px; font: 12px ui-monospace, Consolas, monospace; white-space: pre; margin-bottom: 8px; }
+.va-table-wrap { overflow: auto; max-height: 60vh; border: 1px solid var(--ui-border); border-radius: 8px; }
+.va-table-wrap:has(table:empty) { display: none; }
+.va-table { font-size: 13px; }
+.va-table th { position: sticky; top: 0; background: #f3f4f6; white-space: nowrap; }
+.va-table th, .va-table td { text-align: left !important; vertical-align: top; white-space: pre-wrap; }

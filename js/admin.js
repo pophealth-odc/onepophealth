@@ -385,15 +385,22 @@
     if (!res.ok) throw new Error(`${path}: ${res.status} ${(await res.json()).message}`);
   }
 
-  $('publishBtn').onclick = async () => {
+  // GitHub settings from the Publish tab; null if incomplete. Remembers them (token only if ticked).
+  function ghConfig() {
     const cfg = {
       owner: $('ghOwner').value.trim(),
       repo: $('ghRepo').value.trim(),
       branch: $('ghBranch').value.trim() || 'main',
       token: $('ghToken').value.trim()
     };
-    if (!cfg.owner || !cfg.repo || !cfg.token) { $('publishLog').textContent = 'Owner, repository and token are required.'; return; }
+    if (!cfg.owner || !cfg.repo || !cfg.token) return null;
     PH.writeLocal(PH.KEYS.github, { ...cfg, token: $('ghRemember').checked ? cfg.token : '' });
+    return cfg;
+  }
+
+  $('publishBtn').onclick = async () => {
+    const cfg = ghConfig();
+    if (!cfg) { $('publishLog').textContent = 'Owner, repository and token are required.'; return; }
 
     $('publishLog').textContent = '';
     $('publishBtn').disabled = true;
@@ -413,6 +420,97 @@
       $('publishBtn').disabled = false;
     }
   };
+
+  // ---------- VA (paste from Excel → data/va.json) ----------
+  const VA_PATH = 'data/va.json';
+  let vaData = null; // { updatedAt, updatedBy, columns, rows }
+
+  // Excel copies as tab-separated text; cells containing tabs/newlines/quotes are wrapped in "…" with "" escapes.
+  function parseTsv(text) {
+    const rows = [];
+    let row = [], cell = '', quoted = false;
+    const src = text.replace(/\r\n?/g, '\n');
+    for (let i = 0; i < src.length; i++) {
+      const c = src[i];
+      if (quoted) {
+        if (c === '"' && src[i + 1] === '"') { cell += '"'; i++; }
+        else if (c === '"') quoted = false;
+        else cell += c;
+      } else if (c === '"' && cell === '') quoted = true;
+      else if (c === '\t') { row.push(cell); cell = ''; }
+      else if (c === '\n') { row.push(cell); rows.push(row); row = []; cell = ''; }
+      else cell += c;
+    }
+    if (cell !== '' || row.length) { row.push(cell); rows.push(row); }
+    return rows.filter(r => r.some(v => v.trim() !== ''));
+  }
+
+  // First row = headers (blank → "Column N", duplicates get " (2)"); remaining rows become objects.
+  function toVaData(text) {
+    const [head, ...body] = parseTsv(text);
+    if (!head) return null;
+    const width = Math.max(head.length, ...body.map(r => r.length));
+    const seen = {};
+    const columns = Array.from({ length: width }, (_, i) => {
+      const base = (head[i] || '').trim() || `Column ${i + 1}`;
+      seen[base] = (seen[base] || 0) + 1;
+      return seen[base] > 1 ? `${base} (${seen[base]})` : base;
+    });
+    const rows = body.map(r => Object.fromEntries(columns.map((c, i) => [c, (r[i] ?? '').trim()])));
+    return { updatedAt: new Date().toISOString(), updatedBy: session.username, columns, rows };
+  }
+
+  function renderVaTable(d) {
+    const table = $('vaTable');
+    if (!d || !d.rows.length) {
+      table.replaceChildren();
+      $('vaInfo').textContent = d ? 'Only a header row was found — paste the header row plus data rows.' : 'Nothing saved yet.';
+      return;
+    }
+    table.replaceChildren(
+      el('thead', {}, el('tr', {}, d.columns.map(c => el('th', { text: c })))),
+      el('tbody', {}, d.rows.map(r => el('tr', {}, d.columns.map(c => el('td', { text: r[c] })))))
+    );
+  }
+
+  function setVaInfo(d, prefix) {
+    const when = d.updatedAt ? new Date(d.updatedAt).toLocaleString() : '';
+    $('vaInfo').textContent = `${prefix} ${d.rows.length} row${d.rows.length === 1 ? '' : 's'} × ${d.columns.length} columns` +
+      (when ? ` · last saved ${when}${d.updatedBy ? ' by ' + d.updatedBy : ''}` : '');
+  }
+
+  $('vaPaste').addEventListener('input', () => {
+    vaData = toVaData($('vaPaste').value);
+    renderVaTable(vaData);
+    if (vaData?.rows.length) $('vaInfo').textContent = `Preview: ${vaData.rows.length} rows × ${vaData.columns.length} columns (not saved yet)`;
+  });
+
+  $('vaSaveBtn').onclick = async () => {
+    if (!vaData?.rows.length) { $('vaInfo').textContent = 'Paste the Excel rows (including the header row) first.'; return; }
+    const cfg = ghConfig();
+    if (!cfg) { $('vaInfo').textContent = 'Saving needs the GitHub owner, repository and token — fill them in on the Publish tab, or use Download JSON.'; return; }
+    $('vaSaveBtn').disabled = true;
+    $('vaInfo').textContent = 'Saving…';
+    try {
+      vaData.updatedAt = new Date().toISOString();
+      await putFile(cfg, VA_PATH, vaData);
+      $('vaPaste').value = '';
+      setVaInfo(vaData, `✔ Saved to ${VA_PATH}:`);
+      toast('VA saved');
+    } catch (err) {
+      $('vaInfo').textContent = '✖ ' + err.message;
+    } finally {
+      $('vaSaveBtn').disabled = false;
+    }
+  };
+  $('vaDownloadBtn').onclick = () => {
+    if (!vaData?.rows.length) { $('vaInfo').textContent = 'Nothing to download yet.'; return; }
+    download('va.json', vaData);
+  };
+
+  // Show what is currently saved.
+  PH.fetchJSON(VA_PATH).then(d => { vaData = d; renderVaTable(d); setVaInfo(d, 'Current:'); })
+    .catch(() => renderVaTable(null));
 
   $('exportLayoutBtn').onclick = () => download('layout.json', state.layout);
   $('exportUsersBtn').onclick = () => download('users.json', state.users);

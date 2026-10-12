@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin Dashboard</title>
-  <link rel="stylesheet" href="css/style.css?v=8">
+  <link rel="stylesheet" href="css/style.css?v=9">
 </head>
 <body class="admin">
   <div class="admin-top">
@@ -12,6 +12,7 @@
     <nav class="tabs">
       <button class="tab active" data-view="designer">Page designer</button>
       <button class="tab" data-view="users">Users</button>
+      <button class="tab" data-view="va">VA</button>
       <button class="tab" data-view="publish">Publish</button>
     </nav>
     <span class="spacer"></span>
@@ -71,6 +72,23 @@
   </section>
 
   <!-- Publish -->
+  <section class="view page-view" id="view-va">
+    <div class="box va-box">
+      <h2>VA</h2>
+      <p class="muted">
+        In Excel, select the cells <b>including the header row</b>, copy (Ctrl+C) and paste below (Ctrl+V).
+        <b>Save</b> writes it as <code>data/va.json</code> in the repository (uses the token from the Publish tab).
+      </p>
+      <textarea id="vaPaste" class="va-paste" placeholder="Paste Excel content here…" spellcheck="false"></textarea>
+      <div class="props-actions">
+        <button class="btn btn-primary" id="vaSaveBtn">Save</button>
+        <button class="btn" id="vaDownloadBtn">Download JSON</button>
+      </div>
+      <p class="muted" id="vaInfo"></p>
+      <div class="va-table-wrap"><table class="table va-table" id="vaTable"></table></div>
+    </div>
+  </section>
+
   <section class="view page-view" id="view-publish">
     <div class="box">
       <h2>Publish to GitHub</h2>
@@ -111,6 +129,6 @@
   <div class="toast" id="toast"></div>
 
   <script src="js/common.js?v=3"></script>
-  <script src="js/admin.js?v=2"></script>
+  <script src="js/admin.js?v=3"></script>
 </body>
 </html>
