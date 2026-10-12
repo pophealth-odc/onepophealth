@@ -48,7 +48,12 @@
         "width": 4,
         "padding": 24,
         "linkUrl": "https://pophealth-odc.github.io/leavetracker",
-        "linkText": "Click here"
+        "linkText": "Click here",
+        "feed": "leave",
+        "feedUrl": "https://vawcsvpvwepkogkfluda.supabase.co",
+        "feedKey": "",
+        "feedDays": 30,
+        "feedMax": 5
       }
     },
     {

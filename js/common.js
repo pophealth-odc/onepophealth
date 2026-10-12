@@ -103,6 +103,90 @@ const PH = (() => {
     return node;
   }
 
+  // ---------- Leave Tracker feed ----------
+  // Reads the Leave Tracker's Supabase REST API (same query as its "Upcoming Leave" box).
+  const leaveCache = new Map(); // cache key -> { at, promise }; avoids refetching on every designer re-render
+
+  function isoDate(d) { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
+
+  function fetchUpcomingLeave(url, key, days) {
+    const id = `${url}|${key}|${days}`;
+    const hit = leaveCache.get(id);
+    if (hit && Date.now() - hit.at < 60000) return hit.promise;
+
+    const today = new Date(), until = new Date();
+    until.setDate(until.getDate() + days);
+    const query = new URLSearchParams({
+      select: 'id,start_date,end_date,number_of_days,profiles!employee_id(full_name),leave_types!leave_type_id(name,color)',
+      order: 'start_date'
+    });
+    query.append('start_date', `gt.${isoDate(today)}`);
+    query.append('start_date', `lte.${isoDate(until)}`);
+    const promise = fetch(`${url.replace(/\/+$/, '')}/rest/v1/leave_records?${query}`, {
+      headers: { apikey: key, Authorization: `Bearer ${key}` }
+    }).then(res => {
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
+    });
+    promise.catch(() => leaveCache.delete(id));
+    leaveCache.set(id, { at: Date.now(), promise });
+    return promise;
+  }
+
+  const AVATAR_COLORS = ['#6366f1', '#ec4899', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ef4444', '#14b8a6'];
+  function avatarColor(name) {
+    let h = 0;
+    for (const c of name) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+    return AVATAR_COLORS[h % AVATAR_COLORS.length];
+  }
+  const initials = (name) => name.split(/\s+/).filter(Boolean).slice(0, 2).map(s => s[0].toUpperCase()).join('');
+  const safeColor = (c) => /^#[0-9a-f]{3,8}$/i.test(c || '') ? c : '#3b82f6';
+  const shortDate = (iso) => {
+    const [y, m, d] = iso.split('-').map(Number);
+    return new Date(y, m - 1, d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+  };
+
+  function upcomingLeave(p) {
+    const box = el('div', { class: 'w-leave' }, el('div', { class: 'w-leave-msg', text: 'Loading upcoming leave…' }));
+    const url = safeUrl(p.feedUrl), key = String(p.feedKey || '').trim();
+    if (!/^https:/i.test(url) || !key) {
+      box.firstChild.textContent = 'Set the Leave Tracker Supabase URL and anon key in this card’s settings.';
+      return box;
+    }
+    const days = Math.max(1, Number(p.feedDays) || 30), max = Math.max(1, Number(p.feedMax) || 5);
+
+    fetchUpcomingLeave(url, key, days).then(records => {
+      if (!records.length) {
+        box.replaceChildren(el('div', { class: 'w-leave-msg', text: `No leave scheduled in the next ${days} days.` }));
+        return;
+      }
+      const items = records.slice(0, max).map(r => {
+        const name = r.profiles?.full_name || 'Unknown';
+        const type = r.leave_types?.name || 'Leave';
+        const [, m, d] = r.start_date.split('-').map(Number);
+        const n = Number(r.number_of_days);
+        const range = r.end_date && r.end_date !== r.start_date ? `${shortDate(r.start_date)} – ${shortDate(r.end_date)}` : shortDate(r.start_date);
+        return el('div', { class: 'w-leave-item' }, [
+          el('div', { class: 'w-leave-date' }, [el('div', { class: 'day', text: String(d) }), el('div', { class: 'month', text: MONTHS_SHORT[m - 1] })]),
+          el('div', { class: 'w-leave-info' }, [
+            el('div', { class: 'w-leave-name' }, [
+              el('span', { class: 'w-leave-avatar', text: initials(name), style: { background: avatarColor(name) } }),
+              el('span', { text: name })
+            ]),
+            el('span', { class: 'w-leave-type', text: type, style: { background: safeColor(r.leave_types?.color) } }),
+            el('div', { class: 'w-leave-range', text: Number.isFinite(n) ? `${range} · ${n} day${n === 1 ? '' : 's'}` : range })
+          ])
+        ]);
+      });
+      if (records.length > max) items.push(el('div', { class: 'w-leave-msg', text: `+ ${records.length - max} more` }));
+      box.replaceChildren(...items);
+    }).catch(err => {
+      box.replaceChildren(el('div', { class: 'w-leave-msg', text: `Couldn’t load upcoming leave (${err.message}).` }));
+    });
+    return box;
+  }
+  const MONTHS_SHORT = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+
   // ---------- widget registry ----------
   const commonFields = [
     { key: 'width', label: 'Width', type: 'select', options: [
@@ -206,20 +290,30 @@ const PH = (() => {
     },
     card: {
       label: 'Card', icon: '▭',
-      defaults: { title: 'Card title', body: 'Card description', image: '', linkText: '', linkUrl: '', background: '#ffffff', width: 4, padding: 24 },
+      defaults: { title: 'Card title', body: 'Card description', image: '', linkText: '', linkUrl: '', background: '#ffffff',
+        feed: '', feedUrl: '', feedKey: '', feedDays: 30, feedMax: 5, width: 4, padding: 24 },
       fields: [
         { key: 'title', label: 'Title', type: 'text' },
         { key: 'body', label: 'Body', type: 'textarea' },
         { key: 'image', label: 'Image URL', type: 'text' },
         { key: 'linkText', label: 'Link text', type: 'text' },
         { key: 'linkUrl', label: 'Link URL', type: 'text' },
-        { key: 'background', label: 'Background', type: 'color' }
+        { key: 'background', label: 'Background', type: 'color' },
+        { key: 'feed', label: 'Live content (replaces body)', type: 'select', options: [
+          { value: '', label: 'None' },
+          { value: 'leave', label: 'Upcoming leave (Leave Tracker)' }
+        ] },
+        { key: 'feedUrl', label: 'Leave Tracker Supabase URL', type: 'text' },
+        { key: 'feedKey', label: 'Leave Tracker anon key (public key only, never service_role)', type: 'text' },
+        { key: 'feedDays', label: 'Upcoming leave: days ahead', type: 'number', min: 1, max: 365 },
+        { key: 'feedMax', label: 'Upcoming leave: max people shown', type: 'number', min: 1, max: 50 }
       ],
       render(p, theme) {
+        const body = p.feed === 'leave' ? upcomingLeave(p) : p.body ? el('p', { text: p.body }) : null;
         return el('div', { class: 'w-card', style: { background: p.background } }, [
           safeUrl(p.image) ? el('img', { src: safeUrl(p.image), alt: '' }) : null,
           el('h3', { text: p.title }),
-          p.body ? el('p', { text: p.body }) : null,
+          body,
           p.linkText ? el('a', { href: safeUrl(p.linkUrl) || '#', text: p.linkText + ' →', style: { color: theme.accent } }) : null
         ]);
       }
