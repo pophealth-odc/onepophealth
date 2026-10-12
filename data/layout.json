@@ -47,7 +47,8 @@
         "background": "#ffffff",
         "width": 4,
         "padding": 24,
-        "linkUrl": "https://pophealth-odc.github.io/leavetracker"
+        "linkUrl": "https://pophealth-odc.github.io/leavetracker",
+        "linkText": "Click here"
       }
     },
     {
