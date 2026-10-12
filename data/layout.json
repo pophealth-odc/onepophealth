@@ -51,7 +51,7 @@
         "linkText": "Click here",
         "feed": "leave",
         "feedUrl": "https://vawcsvpvwepkogkfluda.supabase.co",
-        "feedKey": "",
+        "feedKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZhd2NzdnB2d2Vwa29na2ZsdWRhIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MDczNDQ5NSwiZXhwIjoyMTA2MzEwNDk1fQ.qETafwwzIE1sh7TZvGS_w4Gc2SpxHd12w8JdwqdhXks",
         "feedDays": 30,
         "feedMax": 5
       }
