@@ -429,9 +429,12 @@
   const GITHUB_MAX_BYTES = 100 * 1024 * 1024;
   let vaData = null;    // { updatedAt, updatedBy, columns, rows: [[...], ...] }
   let vaLoaded = false; // the saved file is only fetched when the VA tab is first opened
+  let vaPending = false; // true while vaData holds pasted (unsaved) rows; further pastes are appended
+  let vaHeadRaw = '';    // header row as pasted, to skip it when a later batch repeats it
 
   const fmtBytes = (n) => n >= 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`;
-  const nextPaint = () => new Promise(r => requestAnimationFrame(() => setTimeout(r, 0)));
+  // Give the browser a moment to show the "Reading…" message before the (blocking) parse starts.
+  const nextPaint = () => new Promise(r => setTimeout(r, 50));
   function vaStatus(msg) { $('vaInfo').textContent = msg; }
 
   // Guess the delimiter from the first line: Excel paste/TSV = tab, CSV = comma (or ";" in some locales).
@@ -471,28 +474,39 @@
     return rows;
   }
 
-  // First row = headers (blank → "Column N", duplicates get " (2)"); blank rows dropped; rows padded to width.
-  function toVaData(text) {
+  // Non-blank rows of delimited text, cells trimmed.
+  function parseRows(text) {
     if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1); // Excel "CSV UTF-8" starts with a byte-order mark
-    const parsed = parseDelimited(text, detectDelimiter(text));
-    const all = parsed.filter(r => r.some(v => v.trim() !== ''));
+    return parseDelimited(text, detectDelimiter(text))
+      .filter(r => r.some(v => v.trim() !== ''))
+      .map(r => r.map(v => v.trim()));
+  }
+  const padRow = (r, width) => { const out = r.slice(0, width); while (out.length < width) out.push(''); return out; };
+
+  // First row = headers (blank → "Column N", duplicates get " (2)"); rows padded to the widest row.
+  function toVaData(all) {
     const head = all[0];
     if (!head) return null;
     let width = 0;
     for (const r of all) if (r.length > width) width = r.length;
     const seen = {};
     const columns = Array.from({ length: width }, (_, i) => {
-      const base = (head[i] || '').trim() || `Column ${i + 1}`;
+      const base = head[i] || `Column ${i + 1}`;
       seen[base] = (seen[base] || 0) + 1;
       return seen[base] > 1 ? `${base} (${seen[base]})` : base;
     });
-    const rows = new Array(all.length - 1);
-    for (let r = 1; r < all.length; r++) {
-      const src = all[r], out = new Array(width);
-      for (let c = 0; c < width; c++) out[c] = src[c] === undefined ? '' : src[c].trim();
-      rows[r - 1] = out;
-    }
-    return { updatedAt: new Date().toISOString(), updatedBy: session.username, columns, rows };
+    vaHeadRaw = padRow(head, width).join('\t');
+    return { updatedAt: new Date().toISOString(), updatedBy: session.username, columns, rows: all.slice(1).map(r => padRow(r, width)) };
+  }
+
+  // Later batches: skip a repeated header row, then add the rows under the existing columns.
+  function appendVaRows(all) {
+    const width = vaData.columns.length;
+    if (all.length && padRow(all[0], width).join('\t') === vaHeadRaw) all = all.slice(1);
+    const wide = all.find(r => r.length > width && r.slice(width).some(v => v !== ''));
+    if (wide) throw new Error(`this batch has ${wide.length} columns but the first batch had ${width} — copy the same columns each time`);
+    for (const r of all) vaData.rows.push(padRow(r, width));
+    return all.length;
   }
 
   // Older va.json files stored each row as an object; convert to arrays.
@@ -515,35 +529,63 @@
     return `${d.rows.length.toLocaleString()} row${d.rows.length === 1 ? '' : 's'} × ${d.columns.length} columns${shown}`;
   }
 
+  // The first paste starts a new data set (header row + data); later pastes add rows to it,
+  // so a big sheet can be copied in batches. "Start over" begins a new data set.
   async function loadVaText(text, source) {
-    if (!text.trim()) return;
+    if (!text || !text.trim()) { vaStatus('The clipboard has no text — copy the cells in Excel first.'); return; }
     vaStatus(`Reading ${fmtBytes(text.length)} from ${source}…`);
     await nextPaint();
+    let added;
     try {
-      vaData = toVaData(text);
+      const rows = parseRows(text);
+      if (vaPending && vaData) {
+        added = appendVaRows(rows);
+      } else {
+        vaData = toVaData(rows);
+        vaPending = !!vaData;
+        added = vaData ? vaData.rows.length : 0;
+      }
     } catch (err) {
-      vaData = null;
-      vaStatus(`✖ Could not read the data (${err.message}). For very large sheets, use Excel “Save As → CSV” and choose the file instead.`);
+      vaStatus(`✖ Could not read the data: ${err.message}.`);
       return;
     }
     renderVaTable(vaData);
+    $('vaResetBtn').hidden = !vaPending;
     vaStatus(!vaData ? 'No rows found.'
       : !vaData.rows.length ? 'Only a header row was found — include the data rows too.'
-      : `Preview: ${describeVa(vaData)} — not saved yet. Click Save.`);
+      : `Added ${added.toLocaleString()} rows. Total: ${describeVa(vaData)} — not saved yet. Paste more rows to add them, or click Save.`);
   }
 
-  // Read the clipboard text directly; putting tens of MB into the textarea is what freezes the browser.
+  // Ctrl+V: read only the plain-text version of the clipboard; it never goes into the textarea.
   $('vaPaste').addEventListener('paste', (e) => {
     e.preventDefault();
     loadVaText(e.clipboardData.getData('text/plain'), 'clipboard');
   });
+  // Button: Clipboard API reads text only, skipping Excel's much larger HTML copy (can freeze Ctrl+V on big ranges).
+  $('vaClipboardBtn').onclick = async () => {
+    if (!navigator.clipboard?.readText) { vaStatus('This browser can’t read the clipboard from a button — click the box and press Ctrl+V instead.'); return; }
+    vaStatus('Reading clipboard… (allow clipboard access if the browser asks)');
+    try {
+      loadVaText(await navigator.clipboard.readText(), 'clipboard');
+    } catch (err) {
+      vaStatus(`✖ Clipboard access was blocked (${err.message}). Click the box and press Ctrl+V instead.`);
+    }
+  };
+  $('vaResetBtn').onclick = () => {
+    vaData = null;
+    vaPending = false;
+    vaHeadRaw = '';
+    renderVaTable(null);
+    $('vaResetBtn').hidden = true;
+    vaStatus('Cleared. Paste the first batch including the header row.');
+  };
   $('vaPaste').addEventListener('keydown', (e) => {
     if (!(e.ctrlKey || e.metaKey) && e.key.length === 1) e.preventDefault(); // paste-only box
   });
   $('vaFile').onchange = async () => {
     const file = $('vaFile').files[0];
     $('vaFile').value = '';
-    if (file) loadVaText(await file.text(), file.name);
+    if (file) { vaPending = false; loadVaText(await file.text(), file.name); }
   };
 
   function blobToBase64(blob) {
@@ -596,6 +638,8 @@
     $('vaSaveBtn').disabled = true;
     try {
       await commitLargeFile(cfg, VA_PATH, blob, `Update ${VA_PATH} via admin dashboard (${session.username})`);
+      vaPending = false; // the next paste starts a new data set
+      $('vaResetBtn').hidden = true;
       vaStatus(`✔ Saved ${fmtBytes(blob.size)} to ${VA_PATH}: ${describeVa(vaData)}.`);
       toast('VA saved');
     } catch (err) {
@@ -617,6 +661,7 @@
     vaLoaded = true;
     vaStatus('Loading saved VA data…');
     PH.fetchJSON(VA_PATH).then(d => {
+      if (vaPending) return; // don't replace rows the user has already pasted
       vaData = normalizeVa(d);
       renderVaTable(vaData);
       const when = d.updatedAt ? ` · last saved ${new Date(d.updatedAt).toLocaleString()}${d.updatedBy ? ' by ' + d.updatedBy : ''}` : '';

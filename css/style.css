@@ -261,3 +261,5 @@ body.admin { background: #f3f4f6; font-family: var(--ui-font); color: #111827; h
 .va-table { font-size: 13px; }
 .va-table th { position: sticky; top: 0; background: #f3f4f6; white-space: nowrap; }
 .va-table th, .va-table td { text-align: left !important; vertical-align: top; white-space: pre-wrap; }
+.va-steps { margin: 0 0 12px; padding-left: 20px; line-height: 1.6; }
+.va-paste { margin-top: 8px; }
