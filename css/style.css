@@ -255,7 +255,7 @@ body.admin { background: #f3f4f6; font-family: var(--ui-font); color: #111827; h
 
 /* ---------- admin: VA paste ---------- */
 .page-view .box.va-box { max-width: 1200px; }
-.va-paste { min-height: 140px; font: 12px ui-monospace, Consolas, monospace; white-space: pre; margin-bottom: 8px; }
+.va-paste { min-height: 80px; text-align: center; padding-top: 28px; cursor: pointer; background: #f9fafb; border-style: dashed; font: 12px ui-monospace, Consolas, monospace; white-space: pre; margin-bottom: 8px; }
 .va-table-wrap { overflow: auto; max-height: 60vh; border: 1px solid var(--ui-border); border-radius: 8px; }
 .va-table-wrap:has(table:empty) { display: none; }
 .va-table { font-size: 13px; }

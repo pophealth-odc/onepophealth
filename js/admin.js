@@ -421,96 +421,208 @@
     }
   };
 
-  // ---------- VA (paste from Excel → data/va.json) ----------
+  // ---------- VA (paste from Excel or upload CSV → data/va.json) ----------
+  // Built for large sheets (tens of MB): pasted text never goes into the textarea, the preview shows only
+  // the first rows, rows are stored as arrays (column names once), and saving uses the Git Data API (≤100 MB).
   const VA_PATH = 'data/va.json';
-  let vaData = null; // { updatedAt, updatedBy, columns, rows }
+  const VA_PREVIEW_ROWS = 100;
+  const GITHUB_MAX_BYTES = 100 * 1024 * 1024;
+  let vaData = null;    // { updatedAt, updatedBy, columns, rows: [[...], ...] }
+  let vaLoaded = false; // the saved file is only fetched when the VA tab is first opened
 
-  // Excel copies as tab-separated text; cells containing tabs/newlines/quotes are wrapped in "…" with "" escapes.
-  function parseTsv(text) {
-    const rows = [];
-    let row = [], cell = '', quoted = false;
-    const src = text.replace(/\r\n?/g, '\n');
-    for (let i = 0; i < src.length; i++) {
-      const c = src[i];
-      if (quoted) {
-        if (c === '"' && src[i + 1] === '"') { cell += '"'; i++; }
-        else if (c === '"') quoted = false;
-        else cell += c;
-      } else if (c === '"' && cell === '') quoted = true;
-      else if (c === '\t') { row.push(cell); cell = ''; }
-      else if (c === '\n') { row.push(cell); rows.push(row); row = []; cell = ''; }
-      else cell += c;
-    }
-    if (cell !== '' || row.length) { row.push(cell); rows.push(row); }
-    return rows.filter(r => r.some(v => v.trim() !== ''));
+  const fmtBytes = (n) => n >= 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`;
+  const nextPaint = () => new Promise(r => requestAnimationFrame(() => setTimeout(r, 0)));
+  function vaStatus(msg) { $('vaInfo').textContent = msg; }
+
+  // Guess the delimiter from the first line: Excel paste/TSV = tab, CSV = comma (or ";" in some locales).
+  function detectDelimiter(text) {
+    const first = text.slice(0, text.indexOf('\n') === -1 ? 2000 : text.indexOf('\n'));
+    const counts = { '\t': first.split('\t').length, ',': first.split(',').length, ';': first.split(';').length };
+    return Object.keys(counts).reduce((a, b) => counts[b] > counts[a] ? b : a);
   }
 
-  // First row = headers (blank → "Column N", duplicates get " (2)"); remaining rows become objects.
+  // Delimited-text parser. Cells containing the delimiter/newlines/quotes are wrapped in "…" with "" escapes.
+  // Uses indexOf/slice instead of per-character string building so tens of MB parse in about a second.
+  function parseDelimited(text, d) {
+    const rows = [];
+    const n = text.length;
+    let row = [], i = 0;
+    while (i < n) {
+      if (text[i] === '"') {
+        let j = i + 1, cell = '';
+        for (;;) {
+          const q = text.indexOf('"', j);
+          if (q === -1) { cell += text.slice(j); i = n; break; }
+          cell += text.slice(j, q);
+          if (text[q + 1] === '"') { cell += '"'; j = q + 2; } else { i = q + 1; break; }
+        }
+        row.push(cell);
+      } else {
+        let k = i;
+        while (k < n) { const c = text[k]; if (c === d || c === '\n' || c === '\r') break; k++; }
+        row.push(text.slice(i, k));
+        i = k;
+      }
+      const c = text[i];
+      if (c === d) { i++; if (i === n) row.push(''); }
+      else if (c === '\r' || c === '\n') { i += (c === '\r' && text[i + 1] === '\n') ? 2 : 1; rows.push(row); row = []; }
+    }
+    if (row.length) rows.push(row);
+    return rows;
+  }
+
+  // First row = headers (blank → "Column N", duplicates get " (2)"); blank rows dropped; rows padded to width.
   function toVaData(text) {
-    const [head, ...body] = parseTsv(text);
+    if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1); // Excel "CSV UTF-8" starts with a byte-order mark
+    const parsed = parseDelimited(text, detectDelimiter(text));
+    const all = parsed.filter(r => r.some(v => v.trim() !== ''));
+    const head = all[0];
     if (!head) return null;
-    const width = Math.max(head.length, ...body.map(r => r.length));
+    let width = 0;
+    for (const r of all) if (r.length > width) width = r.length;
     const seen = {};
     const columns = Array.from({ length: width }, (_, i) => {
       const base = (head[i] || '').trim() || `Column ${i + 1}`;
       seen[base] = (seen[base] || 0) + 1;
       return seen[base] > 1 ? `${base} (${seen[base]})` : base;
     });
-    const rows = body.map(r => Object.fromEntries(columns.map((c, i) => [c, (r[i] ?? '').trim()])));
+    const rows = new Array(all.length - 1);
+    for (let r = 1; r < all.length; r++) {
+      const src = all[r], out = new Array(width);
+      for (let c = 0; c < width; c++) out[c] = src[c] === undefined ? '' : src[c].trim();
+      rows[r - 1] = out;
+    }
     return { updatedAt: new Date().toISOString(), updatedBy: session.username, columns, rows };
+  }
+
+  // Older va.json files stored each row as an object; convert to arrays.
+  function normalizeVa(d) {
+    if (d && d.rows.length && !Array.isArray(d.rows[0])) d.rows = d.rows.map(r => d.columns.map(c => r[c] ?? ''));
+    return d;
   }
 
   function renderVaTable(d) {
     const table = $('vaTable');
-    if (!d || !d.rows.length) {
-      table.replaceChildren();
-      $('vaInfo').textContent = d ? 'Only a header row was found — paste the header row plus data rows.' : 'Nothing saved yet.';
-      return;
-    }
+    if (!d || !d.rows.length) { table.replaceChildren(); return; }
     table.replaceChildren(
       el('thead', {}, el('tr', {}, d.columns.map(c => el('th', { text: c })))),
-      el('tbody', {}, d.rows.map(r => el('tr', {}, d.columns.map(c => el('td', { text: r[c] })))))
+      el('tbody', {}, d.rows.slice(0, VA_PREVIEW_ROWS).map(r => el('tr', {}, r.map(v => el('td', { text: v })))))
     );
   }
 
-  function setVaInfo(d, prefix) {
-    const when = d.updatedAt ? new Date(d.updatedAt).toLocaleString() : '';
-    $('vaInfo').textContent = `${prefix} ${d.rows.length} row${d.rows.length === 1 ? '' : 's'} × ${d.columns.length} columns` +
-      (when ? ` · last saved ${when}${d.updatedBy ? ' by ' + d.updatedBy : ''}` : '');
+  function describeVa(d) {
+    const shown = d.rows.length > VA_PREVIEW_ROWS ? ` (showing first ${VA_PREVIEW_ROWS})` : '';
+    return `${d.rows.length.toLocaleString()} row${d.rows.length === 1 ? '' : 's'} × ${d.columns.length} columns${shown}`;
   }
 
-  $('vaPaste').addEventListener('input', () => {
-    vaData = toVaData($('vaPaste').value);
+  async function loadVaText(text, source) {
+    if (!text.trim()) return;
+    vaStatus(`Reading ${fmtBytes(text.length)} from ${source}…`);
+    await nextPaint();
+    try {
+      vaData = toVaData(text);
+    } catch (err) {
+      vaData = null;
+      vaStatus(`✖ Could not read the data (${err.message}). For very large sheets, use Excel “Save As → CSV” and choose the file instead.`);
+      return;
+    }
     renderVaTable(vaData);
-    if (vaData?.rows.length) $('vaInfo').textContent = `Preview: ${vaData.rows.length} rows × ${vaData.columns.length} columns (not saved yet)`;
+    vaStatus(!vaData ? 'No rows found.'
+      : !vaData.rows.length ? 'Only a header row was found — include the data rows too.'
+      : `Preview: ${describeVa(vaData)} — not saved yet. Click Save.`);
+  }
+
+  // Read the clipboard text directly; putting tens of MB into the textarea is what freezes the browser.
+  $('vaPaste').addEventListener('paste', (e) => {
+    e.preventDefault();
+    loadVaText(e.clipboardData.getData('text/plain'), 'clipboard');
   });
+  $('vaPaste').addEventListener('keydown', (e) => {
+    if (!(e.ctrlKey || e.metaKey) && e.key.length === 1) e.preventDefault(); // paste-only box
+  });
+  $('vaFile').onchange = async () => {
+    const file = $('vaFile').files[0];
+    $('vaFile').value = '';
+    if (file) loadVaText(await file.text(), file.name);
+  };
+
+  function blobToBase64(blob) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result).split(',', 2)[1]);
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  // Commit one (possibly large) file via the Git Data API: blob → tree → commit → move branch.
+  async function commitLargeFile(cfg, path, blob, message) {
+    const api = `https://api.github.com/repos/${encodeURIComponent(cfg.owner)}/${encodeURIComponent(cfg.repo)}`;
+    const headers = { Authorization: `Bearer ${cfg.token}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' };
+    const call = async (method, url, body) => {
+      const res = await fetch(api + url, { method, headers, body: body && JSON.stringify(body), cache: 'no-store' });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(`${res.status} ${json.message || res.statusText}`);
+      return json;
+    };
+    const ref = `heads/${cfg.branch}`;
+    vaStatus('Saving… (1/4) reading branch');
+    const head = await call('GET', `/git/ref/${ref}`);
+    const parent = await call('GET', `/git/commits/${head.object.sha}`);
+    vaStatus(`Saving… (2/4) uploading ${fmtBytes(blob.size)}`);
+    const content = await blobToBase64(blob);
+    const blobRes = await call('POST', '/git/blobs', { content, encoding: 'base64' });
+    vaStatus('Saving… (3/4) creating commit');
+    const tree = await call('POST', '/git/trees', { base_tree: parent.tree.sha, tree: [{ path, mode: '100644', type: 'blob', sha: blobRes.sha }] });
+    const commit = await call('POST', '/git/commits', { message, tree: tree.sha, parents: [head.object.sha] });
+    vaStatus('Saving… (4/4) updating branch');
+    await call('PATCH', `/git/refs/${ref}`, { sha: commit.sha });
+  }
+
+  function vaBlob() {
+    vaData.updatedAt = new Date().toISOString();
+    return new Blob([JSON.stringify(vaData)], { type: 'application/json' });
+  }
 
   $('vaSaveBtn').onclick = async () => {
-    if (!vaData?.rows.length) { $('vaInfo').textContent = 'Paste the Excel rows (including the header row) first.'; return; }
+    if (!vaData?.rows.length) { vaStatus('Paste the Excel rows (including the header row) or choose a CSV file first.'); return; }
     const cfg = ghConfig();
-    if (!cfg) { $('vaInfo').textContent = 'Saving needs the GitHub owner, repository and token — fill them in on the Publish tab, or use Download JSON.'; return; }
+    if (!cfg) { vaStatus('Saving needs the GitHub owner, repository and token — fill them in on the Publish tab, or use Download JSON.'); return; }
+    const blob = vaBlob();
+    if (blob.size > GITHUB_MAX_BYTES) {
+      vaStatus(`✖ The JSON is ${fmtBytes(blob.size)}; GitHub allows at most 100 MB per file. Remove unneeded columns/rows in Excel and try again.`);
+      return;
+    }
     $('vaSaveBtn').disabled = true;
-    $('vaInfo').textContent = 'Saving…';
     try {
-      vaData.updatedAt = new Date().toISOString();
-      await putFile(cfg, VA_PATH, vaData);
-      $('vaPaste').value = '';
-      setVaInfo(vaData, `✔ Saved to ${VA_PATH}:`);
+      await commitLargeFile(cfg, VA_PATH, blob, `Update ${VA_PATH} via admin dashboard (${session.username})`);
+      vaStatus(`✔ Saved ${fmtBytes(blob.size)} to ${VA_PATH}: ${describeVa(vaData)}.`);
       toast('VA saved');
     } catch (err) {
-      $('vaInfo').textContent = '✖ ' + err.message;
+      vaStatus('✖ Save failed: ' + err.message);
     } finally {
       $('vaSaveBtn').disabled = false;
     }
   };
   $('vaDownloadBtn').onclick = () => {
-    if (!vaData?.rows.length) { $('vaInfo').textContent = 'Nothing to download yet.'; return; }
-    download('va.json', vaData);
+    if (!vaData?.rows.length) { vaStatus('Nothing to download yet.'); return; }
+    const a = el('a', { href: URL.createObjectURL(vaBlob()), download: 'va.json' });
+    a.click();
+    URL.revokeObjectURL(a.href);
   };
 
-  // Show what is currently saved.
-  PH.fetchJSON(VA_PATH).then(d => { vaData = d; renderVaTable(d); setVaInfo(d, 'Current:'); })
-    .catch(() => renderVaTable(null));
+  // Load the saved file only when the VA tab is opened (it can be large).
+  document.querySelector('.tab[data-view="va"]').addEventListener('click', () => {
+    if (vaLoaded) return;
+    vaLoaded = true;
+    vaStatus('Loading saved VA data…');
+    PH.fetchJSON(VA_PATH).then(d => {
+      vaData = normalizeVa(d);
+      renderVaTable(vaData);
+      const when = d.updatedAt ? ` · last saved ${new Date(d.updatedAt).toLocaleString()}${d.updatedBy ? ' by ' + d.updatedBy : ''}` : '';
+      vaStatus(`Current: ${describeVa(vaData)}${when}`);
+    }).catch(() => vaStatus('Nothing saved yet.'));
+  });
 
   $('exportLayoutBtn').onclick = () => download('layout.json', state.layout);
   $('exportUsersBtn').onclick = () => download('users.json', state.users);

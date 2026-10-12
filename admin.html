@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin Dashboard</title>
-  <link rel="stylesheet" href="css/style.css?v=9">
+  <link rel="stylesheet" href="css/style.css?v=10">
 </head>
 <body class="admin">
   <div class="admin-top">
@@ -76,11 +76,14 @@
     <div class="box va-box">
       <h2>VA</h2>
       <p class="muted">
-        In Excel, select the cells <b>including the header row</b>, copy (Ctrl+C) and paste below (Ctrl+V).
-        <b>Save</b> writes it as <code>data/va.json</code> in the repository (uses the token from the Publish tab).
+        In Excel, select the cells <b>including the header row</b>, copy (Ctrl+C), click the box below and paste (Ctrl+V).
+        For very large sheets, use Excel <b>File → Save As → CSV UTF-8</b> and choose the file instead.
+        <b>Save</b> writes it as <code>data/va.json</code> in the repository (uses the token from the Publish tab; max 100 MB).
       </p>
-      <textarea id="vaPaste" class="va-paste" placeholder="Paste Excel content here…" spellcheck="false"></textarea>
+      <textarea id="vaPaste" class="va-paste" placeholder="Click here and press Ctrl+V to paste Excel content" spellcheck="false"></textarea>
       <div class="props-actions">
+        <label class="btn" for="vaFile">Choose CSV file…</label>
+        <input type="file" id="vaFile" accept=".csv,.tsv,.txt,text/csv,text/tab-separated-values,text/plain" hidden>
         <button class="btn btn-primary" id="vaSaveBtn">Save</button>
         <button class="btn" id="vaDownloadBtn">Download JSON</button>
       </div>
@@ -129,6 +132,6 @@
   <div class="toast" id="toast"></div>
 
   <script src="js/common.js?v=3"></script>
-  <script src="js/admin.js?v=3"></script>
+  <script src="js/admin.js?v=4"></script>
 </body>
 </html>
