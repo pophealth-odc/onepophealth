@@ -90,6 +90,20 @@
         "width": 4,
         "padding": 24
       }
+    },
+    {
+      "id": "bd1wt6de",
+      "type": "card",
+      "props": {
+        "title": "Tool",
+        "body": "All you need is here",
+        "image": "",
+        "linkText": "",
+        "linkUrl": "",
+        "background": "#ffffff",
+        "width": 4,
+        "padding": 24
+      }
     }
   ]
 }
