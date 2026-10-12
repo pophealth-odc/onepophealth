@@ -549,11 +549,14 @@
       vaStatus(`✖ Could not read the data: ${err.message}.`);
       return;
     }
-    renderVaTable(vaData);
+    // No table preview after a paste (it's slow for big sheets) — just confirm and show the totals.
+    renderVaTable(null);
     $('vaResetBtn').hidden = !vaPending;
-    vaStatus(!vaData ? 'No rows found.'
-      : !vaData.rows.length ? 'Only a header row was found — include the data rows too.'
-      : `Added ${added.toLocaleString()} rows. Total: ${describeVa(vaData)} — not saved yet. Paste more rows to add them, or click Save.`);
+    if (!vaData) { vaStatus('No rows found.'); return; }
+    if (!vaData.rows.length) { vaStatus('Only a header row was found — include the data rows too.'); return; }
+    const total = `${vaData.rows.length.toLocaleString()} rows × ${vaData.columns.length} columns`;
+    vaStatus(`✔ Pasted successfully: ${added.toLocaleString()} rows added. Total: ${total} — not saved yet. Paste more rows to add them, or click Save.`);
+    toast(`✔ Pasted ${added.toLocaleString()} rows successfully`);
   }
 
   // Ctrl+V: read only the plain-text version of the clipboard; it never goes into the textarea.
