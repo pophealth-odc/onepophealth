@@ -41,12 +41,13 @@
       "id": "b3",
       "type": "card",
       "props": {
-        "title": "Programs",
-        "body": "Browse active care programs and enrollment.",
+        "title": "Leave Tracker",
+        "body": "Leaves and OILs",
         "image": "",
         "background": "#ffffff",
         "width": 4,
-        "padding": 24
+        "padding": 24,
+        "linkUrl": "https://pophealth-odc.github.io/leavetracker"
       }
     },
     {
