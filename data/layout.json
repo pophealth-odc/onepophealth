@@ -1,6 +1,6 @@
 {
   "theme": {
-    "siteTitle": "PopHealth",
+    "siteTitle": "Population Health",
     "background": "#f5f7fb",
     "text": "#1f2937",
     "accent": "#2563eb",
@@ -29,7 +29,7 @@
       "id": "b2",
       "type": "card",
       "props": {
-        "title": "Dynatrace Links",
+        "title": "Anouncements",
         "body": "View population health reports and trends.",
         "image": "",
         "background": "#ffffff",
