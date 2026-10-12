@@ -1,14 +1,38 @@
 [
   {
-    "username": "admin",
-    "role": "Admin"
-  },
-  {
     "username": "kim",
     "role": "Admin"
   },
   {
     "username": "dhalia",
+    "role": "User"
+  },
+  {
+    "username": "mon",
+    "role": "User"
+  },
+  {
+    "username": "jaztyn",
+    "role": "User"
+  },
+  {
+    "username": "chris",
+    "role": "User"
+  },
+  {
+    "username": "ed",
+    "role": "User"
+  },
+  {
+    "username": "dale",
+    "role": "User"
+  },
+  {
+    "username": "yves",
+    "role": "User"
+  },
+  {
+    "username": "david",
     "role": "User"
   }
 ]
