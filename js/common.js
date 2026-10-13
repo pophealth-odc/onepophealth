@@ -187,6 +187,82 @@ const PH = (() => {
   }
   const MONTHS_SHORT = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
 
+  // ---------- card list ----------
+  // items: [{ text, url }]; url optional. External links open in a new tab.
+  function linkList(items) {
+    const list = (Array.isArray(items) ? items : []).filter(it => String(it.text || it.url || '').trim());
+    if (!list.length) return null;
+    return el('ul', { class: 'w-card-list' }, list.map(it => {
+      const url = safeUrl(it.url), text = String(it.text || it.url).trim();
+      if (!url) return el('li', {}, el('span', { text }));
+      const a = el('a', { href: url, text });
+      if (/^https?:/i.test(url)) { a.target = '_blank'; a.rel = 'noopener'; }
+      return el('li', {}, a);
+    }));
+  }
+
+  // ---------- VA summary (reads data/va.json, links to the VA Tracker) ----------
+  // Same rules as the VA Tracker: days left = SLA Deadline − today; breached when negative.
+  let vaPromise = null;
+  function loadVa() {
+    vaPromise = vaPromise || fetchJSON('data/va.json').catch(err => { vaPromise = null; throw err; });
+    return vaPromise;
+  }
+  function parseDmy(s) {
+    const m = String(s || '').trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    return m ? new Date(+m[3], +m[2] - 1, +m[1]) : null;
+  }
+  function vaCounts(data) {
+    const idx = Object.fromEntries(data.columns.map((c, i) => [c, i]));
+    const get = (r, c) => String((Array.isArray(r) ? r[idx[c]] : r[c]) ?? '').trim();
+    const now = new Date(); now.setHours(0, 0, 0, 0);
+    const out = { nostrategy: 0, breach: 0, d15: 0, d30: 0, total: data.rows.length };
+    for (const r of data.rows) {
+      const deadline = parseDmy(get(r, 'SLA Deadline'));
+      let days = deadline ? Math.round((deadline - now) / 86400000) : parseInt(get(r, 'Days to SLA Breach'), 10);
+      const breached = Number.isNaN(days) ? /breach/i.test(get(r, 'SLA Status')) : days < 0;
+      if (breached) out.breach++;
+      else if (days <= 15) out.d15++;
+      else if (days <= 30) out.d30++;
+      if (!get(r, 'Remediation Strategy')) out.nostrategy++;
+    }
+    return out;
+  }
+  const VA_TILES = [
+    { key: 'nostrategy', flag: 'showNoStrategy', label: 'No Remediation Strategy', sub: 'strategy is blank' },
+    { key: 'breach', flag: 'showBreach', label: 'SLA Breach', sub: 'deadline has passed' },
+    { key: 'd15', flag: 'showD15', label: '< 15 days', sub: '0–15 days to SLA' },
+    { key: 'd30', flag: 'showD30', label: '< 30 days', sub: '16–30 days to SLA' }
+  ];
+  function vaSummary(p) {
+    const base = safeUrl(p.trackerUrl) || '#';
+    const tiles = VA_TILES.filter(t => p[t.flag] !== false);
+    const nums = {};
+    const box = el('div', { class: 'w-va' }, [
+      el('div', { class: 'w-va-head' }, [
+        p.title ? el('h3', { text: p.title }) : null,
+        el('span', { class: 'w-va-meta', text: 'Loading VA data…' }),
+        el('a', { class: 'w-va-open', href: base, text: 'Open VA Tracker →' })
+      ]),
+      el('div', { class: 'w-va-tiles' }, tiles.map(t => el('a', { class: `w-va-tile tone-${t.key}`, href: `${base}#open=${t.key}` }, [
+        nums[t.key] = el('div', { class: 'w-va-num', text: '…' }),
+        el('div', { class: 'w-va-label', text: t.label }),
+        el('div', { class: 'w-va-sub', text: t.sub })
+      ])))
+    ]);
+    const meta = box.querySelector('.w-va-meta');
+    loadVa().then(data => {
+      const c = vaCounts(data);
+      for (const t of tiles) nums[t.key].textContent = c[t.key].toLocaleString();
+      const when = data.updatedAt ? new Date(data.updatedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
+      meta.textContent = `${c.total.toLocaleString()} findings${when ? ' · data from ' + when : ''}`;
+    }).catch(() => {
+      meta.textContent = 'No VA data yet — upload it in Admin Dashboard → VA.';
+      for (const t of tiles) nums[t.key].textContent = '–';
+    });
+    return box;
+  }
+
   // ---------- widget registry ----------
   const commonFields = [
     { key: 'width', label: 'Width', type: 'select', options: [
@@ -290,11 +366,12 @@ const PH = (() => {
     },
     card: {
       label: 'Card', icon: '▭',
-      defaults: { title: 'Card title', body: 'Card description', image: '', linkText: '', linkUrl: '', background: '#ffffff',
+      defaults: { title: 'Card title', body: 'Card description', items: [], image: '', linkText: '', linkUrl: '', background: '#ffffff',
         feed: '', feedUrl: '', feedKey: '', feedDays: 30, feedMax: 5, width: 4, padding: 24 },
       fields: [
         { key: 'title', label: 'Title', type: 'text' },
         { key: 'body', label: 'Body', type: 'textarea' },
+        { key: 'items', label: 'List (each item can have a link)', type: 'links' },
         { key: 'image', label: 'Image URL', type: 'text' },
         { key: 'linkText', label: 'Link text', type: 'text' },
         { key: 'linkUrl', label: 'Link URL', type: 'text' },
@@ -310,13 +387,30 @@ const PH = (() => {
       ],
       render(p, theme) {
         const body = p.feed === 'leave' ? upcomingLeave(p) : p.body ? el('p', { text: p.body }) : null;
-        return el('div', { class: 'w-card', style: { background: p.background } }, [
+        // A white (default) background follows the light/dark theme; any other colour is kept as chosen.
+        const plain = !p.background || /^#?f{3}(f{3})?$/i.test(p.background);
+        return el('div', { class: `w-card${plain ? ' w-card-plain' : ''}`, style: { background: plain ? undefined : p.background } }, [
           safeUrl(p.image) ? el('img', { src: safeUrl(p.image), alt: '' }) : null,
           el('h3', { text: p.title }),
           body,
+          linkList(p.items),
           p.linkText ? el('a', { href: safeUrl(p.linkUrl) || '#', text: p.linkText + ' →', style: { color: theme.accent } }) : null
         ]);
       }
+    },
+    vaSummary: {
+      label: 'VA summary', icon: '🛡',
+      defaults: { title: 'VA Status', trackerUrl: 'https://kailknight.github.io/VATracker/',
+        showNoStrategy: true, showBreach: true, showD15: true, showD30: true, width: 12, padding: 0 },
+      fields: [
+        { key: 'title', label: 'Title', type: 'text' },
+        { key: 'trackerUrl', label: 'VA Tracker URL', type: 'text' },
+        { key: 'showNoStrategy', label: 'Show No Remediation Strategy', type: 'checkbox' },
+        { key: 'showBreach', label: 'Show SLA Breach', type: 'checkbox' },
+        { key: 'showD15', label: 'Show < 15 days', type: 'checkbox' },
+        { key: 'showD30', label: 'Show < 30 days', type: 'checkbox' }
+      ],
+      render: (p) => vaSummary(p)
     },
     list: {
       label: 'List', icon: '☰',
@@ -381,15 +475,42 @@ const PH = (() => {
   ];
 
   // ---------- rendering ----------
+  // Page colours from the admin are the light theme (--theme-*); css/style.css maps them to the
+  // --page-* variables and replaces them with a dark palette when dark mode is on.
   function applyTheme(theme, root = document.documentElement) {
-    root.style.setProperty('--page-bg', theme.background);
-    root.style.setProperty('--page-text', theme.text);
+    root.style.setProperty('--theme-page-bg', theme.background);
+    root.style.setProperty('--theme-page-text', theme.text);
     root.style.setProperty('--accent', theme.accent);
-    root.style.setProperty('--header-bg', theme.headerBg);
-    root.style.setProperty('--header-text', theme.headerText);
+    root.style.setProperty('--theme-header-bg', theme.headerBg);
+    root.style.setProperty('--theme-header-text', theme.headerText);
     root.style.setProperty('--page-font', theme.font);
     root.style.setProperty('--max-width', `${theme.maxWidth}px`);
   }
+
+  // ---------- dark mode ----------
+  // Each page's <head> sets data-theme before painting; this wires up every [data-theme-toggle] button.
+  const THEME_KEY = 'ph_theme';
+  function setColorMode(mode) {
+    document.documentElement.dataset.theme = mode;
+    try { localStorage.setItem(THEME_KEY, mode); } catch { /* storage may be blocked */ }
+    syncThemeButtons();
+  }
+  function syncThemeButtons() {
+    const dark = document.documentElement.dataset.theme === 'dark';
+    document.querySelectorAll('[data-theme-toggle]').forEach(b => {
+      b.textContent = dark ? '☀️ Light' : '🌙 Dark';
+      b.setAttribute('aria-pressed', String(dark));
+      b.title = dark ? 'Switch to light mode' : 'Switch to dark mode';
+    });
+  }
+  function initThemeToggle() {
+    document.querySelectorAll('[data-theme-toggle]').forEach(b => {
+      b.onclick = () => setColorMode(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
+    });
+    syncThemeButtons();
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initThemeToggle);
+  else initThemeToggle();
 
   function renderBlock(block, theme) {
     const def = WIDGETS[block.type];
@@ -409,6 +530,6 @@ const PH = (() => {
     KEYS, readLocal, writeLocal, fetchJSON,
     getUsers, getPublishedUsers, getLayout, getPublishedLayout, reconcileDrafts, draftState,
     getSession, setSession, clearSession, isAdmin, requireLogin, requireAdmin,
-    uid, clone, el, WIDGETS, THEME_FIELDS, applyTheme, renderBlock, renderPage
+    uid, clone, el, WIDGETS, THEME_FIELDS, applyTheme, renderBlock, renderPage, setColorMode
   };
 })();

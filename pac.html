@@ -3,8 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script>
+    // Dark mode: saved choice, else the system setting (set before paint to avoid a flash).
+    (function () {
+      var t = null;
+      try { t = localStorage.getItem('ph_theme'); } catch (e) {}
+      if (!t) t = window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      document.documentElement.dataset.theme = t;
+    })();
+  </script>
   <title>Pre-Approved Change Template</title>
-  <link rel="stylesheet" href="css/style.css?v=11">
+  <link rel="stylesheet" href="css/style.css?v=13">
 </head>
 <body>
   <header class="site-header">
@@ -13,6 +22,7 @@
       <span class="user-chip" id="userChip"></span>
       <a class="btn" href="main.html">Home</a>
       <a class="btn btn-primary" id="adminBtn" href="admin.html" hidden>Admin Dashboard</a>
+      <button class="btn theme-toggle" type="button" data-theme-toggle>🌙 Dark</button>
       <button class="btn" id="logoutBtn">Log out</button>
     </div>
   </header>
@@ -20,7 +30,7 @@
   <main class="page ecr" id="app"></main>
   <div class="toast" id="toast"></div>
 
-  <script src="js/common.js?v=3"></script>
+  <script src="js/common.js?v=4"></script>
   <script src="js/template-form.js?v=2"></script>
   <script src="js/pac.js?v=1"></script>
 </body>

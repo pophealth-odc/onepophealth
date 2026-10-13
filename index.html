@@ -3,10 +3,20 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script>
+    // Dark mode: saved choice, else the system setting (set before paint to avoid a flash).
+    (function () {
+      var t = null;
+      try { t = localStorage.getItem('ph_theme'); } catch (e) {}
+      if (!t) t = window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      document.documentElement.dataset.theme = t;
+    })();
+  </script>
   <title>Login</title>
-  <link rel="stylesheet" href="css/style.css?v=11">
+  <link rel="stylesheet" href="css/style.css?v=13">
 </head>
 <body>
+  <button class="btn theme-toggle login-theme" type="button" data-theme-toggle>🌙 Dark</button>
   <div class="login-wrap">
     <form class="login-card" id="loginForm" autocomplete="on">
       <h1 id="siteTitle">Sign in</h1>
@@ -18,7 +28,7 @@
     </form>
   </div>
 
-  <script src="js/common.js?v=3"></script>
+  <script src="js/common.js?v=4"></script>
   <script>
     (async () => {
       if (PH.getSession()) { location.replace('main.html'); return; }

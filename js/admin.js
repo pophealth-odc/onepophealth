@@ -234,6 +234,44 @@
       input = el('input', { id, type: 'number', min: field.min, max: field.max });
       input.value = value ?? '';
       input.oninput = () => { if (input.value !== '') onChange(Number(input.value)); };
+    } else if (field.type === 'links') {
+      // List of { text, url } rows with add / move / remove.
+      const items = (Array.isArray(value) ? value : []).map(it => ({ text: it.text || '', url: it.url || '' }));
+      const commit = () => onChange(items.map(it => ({ ...it })));
+      input = el('div', { class: 'links-editor', id });
+      const iconBtn = (text, title, fn) => {
+        const b = el('button', { type: 'button', title, text });
+        b.onclick = fn;
+        return b;
+      };
+      const draw = () => {
+        const rows = items.map((it, i) => {
+          const text = el('input', { placeholder: 'Text' });
+          text.value = it.text;
+          text.oninput = () => { it.text = text.value; commit(); };
+          const url = el('input', { placeholder: 'Link (optional), e.g. https://…' });
+          url.value = it.url;
+          url.oninput = () => { it.url = url.value.trim(); commit(); };
+          const move = (to) => { if (to < 0 || to >= items.length) return; items.splice(to, 0, items.splice(i, 1)[0]); commit(); draw(); };
+          return el('div', { class: 'links-row' }, [
+            el('div', { class: 'links-inputs' }, [text, url]),
+            el('div', { class: 'links-btns' }, [
+              iconBtn('↑', 'Move up', () => move(i - 1)),
+              iconBtn('↓', 'Move down', () => move(i + 1)),
+              iconBtn('✕', 'Remove', () => { items.splice(i, 1); commit(); draw(); })
+            ])
+          ]);
+        });
+        const add = el('button', { class: 'btn btn-sm', type: 'button', text: '+ Add item' });
+        add.onclick = () => {
+          items.push({ text: '', url: '' });
+          commit();
+          draw();
+          input.querySelectorAll('.links-inputs input')[items.length * 2 - 2]?.focus();
+        };
+        input.replaceChildren(...(rows.length ? rows : [el('div', { class: 'links-empty', text: 'No items yet.' })]), add);
+      };
+      draw();
     } else if (field.type === 'color') {
       // Colour picker + free text (allows blank = "inherit" and any CSS colour).
       const picker = el('input', { type: 'color' });

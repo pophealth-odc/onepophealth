@@ -26,6 +26,20 @@
       }
     },
     {
+      "id": "bva01",
+      "type": "vaSummary",
+      "props": {
+        "title": "VA Status",
+        "trackerUrl": "https://kailknight.github.io/VATracker/",
+        "showNoStrategy": true,
+        "showBreach": true,
+        "showD15": true,
+        "showD30": true,
+        "width": 12,
+        "padding": 0
+      }
+    },
+    {
       "id": "b2",
       "type": "card",
       "props": {
