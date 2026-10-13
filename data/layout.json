@@ -29,7 +29,7 @@
       "id": "bva01",
       "type": "vaSummary",
       "props": {
-        "title": "VA Status",
+        "title": "Population Health VA Status",
         "trackerUrl": "https://kailknight.github.io/VATracker/",
         "showNoStrategy": true,
         "showBreach": true,
