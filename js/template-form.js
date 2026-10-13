@@ -452,8 +452,10 @@ const PHTemplate = (() => {
 
   // ---------- subject line ----------
   // "[For RO Approval]S1532_PACES | Emergency Change | ECR-673 - Request to fix …"
+  const AUTO_PREFIX = 'Automatic — [For RO/PS/… Approval] by who approves next';
   const SUBJECT_FIELDS = [
-    { key: 'subjectPrefix', label: 'Prefix', type: 'select', options: ['[For RO Approval]', '[Action Required]'] },
+    { key: 'subjectPrefix', label: 'Prefix', type: 'select', options: [AUTO_PREFIX, '[Action Required]'],
+      hint: 'Automatic follows the Deployment Approval table: the first approver not yet Approved.' },
     { key: 'systemId', label: 'System ID', placeholder: 'e.g. S1532 (taken from System Name if it contains one)' },
     { key: 'changeTitle', label: 'Change title', placeholder: 'e.g. Request to fix Microsoft Edge and Windows Patch for PACES HDC Production Server/s' }
   ];
@@ -464,9 +466,20 @@ const PHTemplate = (() => {
     const shortName = id ? name.replace(new RegExp(`\\s*\\(\\s*${id}\\s*\\)\\s*$`, 'i'), '') : name;
     return { id, name: shortName, title: String(data.changeTitle || '').trim() };
   }
+  // Reporting Officer → RO, Product Specialist → PS, Service Lead → SL, Project Director → PD; others by initials.
+  const ROLE_ABBR = { 'reporting officer': 'RO', 'product specialist': 'PS', 'service lead': 'SL', 'project director': 'PD' };
+  function prefixFor(data) {
+    // A manual choice wins; an old saved "[For RO Approval]" counts as automatic.
+    if (data.subjectPrefix && data.subjectPrefix !== AUTO_PREFIX && !/^\[For \w+ Approval\]$/.test(data.subjectPrefix)) return data.subjectPrefix;
+    const list = data.approvals || [];
+    const next = list.find(a => a.status !== 'Approved') || list[list.length - 1];
+    const division = String(next?.division || '').trim();
+    const abbr = ROLE_ABBR[division.toLowerCase()] || division.split(/\s+/).filter(Boolean).map(w => w[0].toUpperCase()).join('') || 'RO';
+    return `[For ${abbr} Approval]`;
+  }
   function subjectLine(data, { type, ticket, systemName }) {
     const p = subjectParts(data, systemName);
-    return `${data.subjectPrefix || SUBJECT_FIELDS[0].options[0]}${p.id || '<System ID>'}_${p.name || '<System Name>'} | ${type} | ` +
+    return `${prefixFor(data)}${p.id || '<System ID>'}_${p.name || '<System Name>'} | ${type} | ` +
       `${String(ticket || '').trim() || '<Ticket>'} - ${p.title || '<Change title>'}`;
   }
   function subjectMissing(data, systemName) {
