@@ -69,13 +69,15 @@
     approvalsUnderline: true,
     approvers: ['Reporting Officer', 'Product Specialist', 'Service Lead', 'Project Director'],
     type: 'ecr',
-    subjectFields: PHTemplate.SUBJECT_FIELDS,
+    // System ID is a row in the table below (same value feeds the subject), so it's not repeated here.
+    subjectFields: PHTemplate.SUBJECT_FIELDS.filter(f => f.key !== 'systemId'),
     // `shade` mirrors the darker rows in the original template.
     fields: [
       { key: 'ecrNumber', label: 'Emergency Change Number', placeholder: 'e.g. ECR-673' },
       { key: 'incident', label: 'Incident Number (if any)' },
       changeType,
       justification,
+      { key: 'systemId', label: 'System ID', placeholder: 'e.g. S1532' },
       { key: 'system', label: 'System Name' },
       { key: 'description', label: 'Change Description', multiline: true },
       { key: 'reasonNoCR', label: 'Reason for not raising Normal CR', multiline: true },
