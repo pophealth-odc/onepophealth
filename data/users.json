@@ -5,7 +5,7 @@
   },
   {
     "username": "dhalia",
-    "role": "Approver"
+    "role": "Admin"
   },
   {
     "username": "mon",
@@ -13,7 +13,7 @@
   },
   {
     "username": "jaztyn",
-    "role": "User"
+    "role": "Admin"
   },
   {
     "username": "chris",
@@ -33,6 +33,14 @@
   },
   {
     "username": "david",
+    "role": "User"
+  },
+  {
+    "username": "ryan",
+    "role": "View"
+  },
+  {
+    "username": "edd",
     "role": "User"
   }
 ]
