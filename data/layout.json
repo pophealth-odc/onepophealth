@@ -40,15 +40,25 @@
       }
     },
     {
-      "id": "b2",
-      "type": "card",
+      "id": "b08v27lg",
+      "type": "heading",
       "props": {
-        "title": "Anouncements",
-        "body": "New updates",
-        "image": "",
-        "background": "#ffffff",
-        "width": 4,
-        "padding": 24
+        "text": "Tools",
+        "level": "h2",
+        "align": "center",
+        "color": "",
+        "width": 12,
+        "padding": 8
+      }
+    },
+    {
+      "id": "b5q7bdhv",
+      "type": "divider",
+      "props": {
+        "color": "#d1d5db",
+        "thickness": 1,
+        "width": 12,
+        "padding": 8
       }
     },
     {
@@ -71,29 +81,82 @@
       }
     },
     {
-      "id": "b4",
+      "id": "bd1wt6de",
       "type": "card",
       "props": {
-        "title": "Resources",
-        "body": "Guides, documents and helpful links.",
+        "title": "Tool",
+        "body": "All you need is here",
         "image": "",
+        "linkText": "",
+        "linkUrl": "",
         "background": "#ffffff",
+        "width": 4,
+        "padding": 24,
+        "items": [
+          {
+            "text": "Dynatrace",
+            "url": ""
+          },
+          {
+            "text": "Fusion",
+            "url": ""
+          },
+          {
+            "text": "Oneclick",
+            "url": ""
+          }
+        ]
+      }
+    },
+    {
+      "id": "by7ateep",
+      "type": "card",
+      "props": {
+        "title": "Ticketing",
+        "body": "Card description",
+        "items": [
+          {
+            "text": "Jira",
+            "url": ""
+          },
+          {
+            "text": "ServiceNow",
+            "url": ""
+          }
+        ],
+        "image": "",
+        "linkText": "",
+        "linkUrl": "",
+        "background": "#ffffff",
+        "feed": "",
+        "feedUrl": "",
+        "feedKey": "",
+        "feedDays": 30,
+        "feedMax": 5,
         "width": 4,
         "padding": 24
       }
     },
     {
-      "id": "b5",
-      "type": "card",
+      "id": "by33klm2",
+      "type": "heading",
       "props": {
-        "title": "Emergency Change",
-        "body": "Fill in an ECR and generate the approval email for Outlook.",
-        "image": "",
-        "linkText": "Open template",
-        "linkUrl": "ecr.html",
-        "background": "#ffffff",
-        "width": 4,
-        "padding": 24
+        "text": "Email Template",
+        "level": "h2",
+        "align": "center",
+        "color": "",
+        "width": 12,
+        "padding": 8
+      }
+    },
+    {
+      "id": "b9ioxtpk",
+      "type": "divider",
+      "props": {
+        "color": "#d1d5db",
+        "thickness": 1,
+        "width": 12,
+        "padding": 8
       }
     },
     {
@@ -111,14 +174,14 @@
       }
     },
     {
-      "id": "bd1wt6de",
+      "id": "b5",
       "type": "card",
       "props": {
-        "title": "Tool",
-        "body": "All you need is here",
+        "title": "Emergency Change",
+        "body": "Fill in an ECR and generate the approval email for Outlook.",
         "image": "",
-        "linkText": "",
-        "linkUrl": "",
+        "linkText": "Open template",
+        "linkUrl": "ecr.html",
         "background": "#ffffff",
         "width": 4,
         "padding": 24
