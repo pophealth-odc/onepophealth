@@ -451,7 +451,7 @@ const PHTemplate = (() => {
   }
 
   // ---------- subject line ----------
-  // "[For RO Approval]S1532_PACES | Emergency Change | ECR-673 - Request to fix …"
+  // "[For RO Approval] S1532_PACES | Emergency Change | ECR-673 - Request to fix …"
   const AUTO_PREFIX = 'Automatic — [For RO/PS/… Approval] by who approves next';
   const SUBJECT_FIELDS = [
     { key: 'subjectPrefix', label: 'Prefix', type: 'select', options: [AUTO_PREFIX, '[Action Required]'],
@@ -479,7 +479,7 @@ const PHTemplate = (() => {
   }
   function subjectLine(data, { type, ticket, systemName }) {
     const p = subjectParts(data, systemName);
-    return `${prefixFor(data)}${p.id || '<System ID>'}_${p.name || '<System Name>'} | ${type} | ` +
+    return `${prefixFor(data)} ${p.id || '<System ID>'}_${p.name || '<System Name>'} | ${type} | ` +
       `${String(ticket || '').trim() || '<Ticket>'} - ${p.title || '<Change title>'}`;
   }
   function subjectMissing(data, systemName) {
