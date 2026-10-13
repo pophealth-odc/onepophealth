@@ -14,26 +14,32 @@
     approvers: ['Reporting Officer', 'Product Specialist', 'Service Lead', 'Project Director'],
     headerAlign: 'left',
     type: 'pac',
-    subjectFields: PHTemplate.SUBJECT_FIELDS,
+    subjectFields: PHTemplate.SUBJECT_FIELDS.map(f => ({ ...f, example: {
+      systemId: 'S1092', changeTitle: 'Routine monthly maintenance for Aug-26 baseline for SEA Production servers'
+    }[f.key] || f.example })),
+    // `example` = grey placeholder; Tab in the empty field inserts it.
     introFields: [
       { key: 'purpose', label: 'Purpose (bold, after the CR number)', multiline: true,
-        placeholder: 'for System Team to perform routine monthly maintenance for Aug-26 baseline for SEA Production servers',
+        example: 'for System Team to perform routine monthly maintenance for Aug-26 baseline for SEA Production servers',
         hint: 'Leave blank to use the Change Summary.' },
       { key: 'routingReason', label: 'Why it is routed for approval (optional)', multiline: true, rows: 3,
-        placeholder: 'We are routing this upcoming maintenance for approval as there is a need to reschedule from the pre-arranged date on 01 September 2026 due to monthly batch jobs running on 1st day of the month.' }
+        example: 'We are routing this upcoming maintenance for approval as there is a need to reschedule from the pre-arranged date on 01 September 2026 due to monthly batch jobs running on 1st day of the month.' }
     ],
     // Row colours follow the original template: blue-grey rows and light-grey summary rows.
     fields: [
-      { key: 'crNumbers', label: 'Change Request No', type: 'list', placeholder: 'SCR-95710\n(one per line)', bg: '#d9e1f2' },
-      { key: 'summary', label: 'Change Summary', placeholder: 'AIC SEA - For System team to perform routine monthly maintenance…', bg: '#f2f2f2' },
-      { key: 'description', label: 'Change Description', multiline: true, rows: 3, bg: '#f2f2f2' },
-      { key: 'system', label: 'System Name', placeholder: 'e.g. AIC SEA (S1092)', bg: '#d9e1f2' },
-      { key: 'institutions', label: 'Institution(s) Affected', bg: '#e9eef7' },
+      { key: 'crNumbers', label: 'Change Request No', type: 'list', example: 'SCR-95710', hint: 'One per line.', bg: '#d9e1f2' },
+      { key: 'summary', label: 'Change Summary', bg: '#f2f2f2',
+        example: 'AIC SEA - For System team to perform routine monthly maintenance for Aug-26 baseline for SEA Production servers' },
+      { key: 'description', label: 'Change Description', multiline: true, rows: 3, bg: '#f2f2f2',
+        example: 'For System team to perform routine monthly maintenance for Aug-26 baseline for SEA Production servers.' },
+      { key: 'system', label: 'System Name', example: 'AIC SEA (S1092)', bg: '#d9e1f2' },
+      { key: 'institutions', label: 'Institution(s) Affected', example: 'AIC', bg: '#e9eef7' },
       { key: 'deployWindow', label: 'Deployment window\n(Start and End Date/Time)', type: 'window', bg: '#d9e1f2' },
-      { key: 'downtime', label: 'Downtime Window\n(Start and End Date/Time, including rollback)', type: 'window', bg: '#d9e1f2' },
+      { key: 'downtime', label: 'Downtime Window\n(Start and End Date/Time, including rollback)', type: 'window', bg: '#d9e1f2',
+        noteExample: '(Broadcast Message has been sent to the users)' },
       { key: 'implPlan', label: 'Implementation Plan & SOP', multiline: true, rows: 3, bg: '#d9e1f2',
-        placeholder: 'Implementation Plan and SOP is embedded to the ticket.\nTicket link: https://…' },
-      { key: 'uat', label: 'UAT Sign off', multiline: true, placeholder: 'NA, as this is routine monthly maintenance.', bg: '#d9e1f2' }
+        example: 'Implementation Plan and SOP is embedded to the ticket.\nTicket link: https://itsm.hcloud.healthgrp.com.sg/servicedesk/customer/portal/51/SCR-95710\n<<SCR-95710 AICSEA - Rescheduling Production Monthly Maintenance.pdf' },
+      { key: 'uat', label: 'UAT Sign off', multiline: true, example: 'NA, as this is routine monthly maintenance.', bg: '#d9e1f2' }
     ],
     introHtml(ctx) {
       const { esc, ordinals, lines, joinItems } = ctx;

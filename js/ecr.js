@@ -51,9 +51,11 @@
       const { el } = PH;
       return [
         el('label', { class: 'ecr-inline-label', text: 'Background:' }),
-        input('background', { multiline: true, rows: 3 }),
+        input('background', { multiline: true, rows: 3,
+          example: 'The Microsoft Edge (Chromium) and Windows Server 2016 on AIC360 Production Servers need to be upgraded to address Threat Intel (Blue Moon Exploit).' }),
         el('label', { class: 'ecr-inline-label', text: 'Changes: (one item per line)' }),
-        input('changes', { multiline: true, rows: 3, placeholder: 'Microsoft Edge Chromium\nWindows Patch 2022 Server' })
+        input('changes', { multiline: true, rows: 3,
+          example: 'Upgrade Microsoft Edge(Chromium) from 149.0.4022.62 to 153.0.4234.32 version.\nUpgrade Windows Server 2022 September Baseline (KB5122882)' })
       ];
     },
     html: ({ data, lines, esc, listItems }) =>
@@ -73,24 +75,27 @@
     subjectFields: PHTemplate.SUBJECT_FIELDS.filter(f => f.key !== 'systemId'),
     // `shade` mirrors the darker rows in the original template.
     fields: [
-      { key: 'ecrNumber', label: 'Emergency Change Number', placeholder: 'e.g. ECR-673' },
-      { key: 'incident', label: 'Incident Number (if any)' },
+      // `example` = grey placeholder; Tab in the empty field inserts it.
+      { key: 'ecrNumber', label: 'Emergency Change Number', example: 'ECR-673' },
+      { key: 'incident', label: 'Incident Number (if any)', example: 'Not Applicable' },
       changeType,
       justification,
-      { key: 'systemId', label: 'System ID', placeholder: 'e.g. S1532' },
-      { key: 'system', label: 'System Name' },
-      { key: 'description', label: 'Change Description', multiline: true },
-      { key: 'reasonNoCR', label: 'Reason for not raising Normal CR', multiline: true },
-      { key: 'institutions', label: 'Institution(s) Affected', shade: true },
+      { key: 'systemId', label: 'System ID', example: 'S1532' },
+      { key: 'system', label: 'System Name', example: 'AIC 360' },
+      { key: 'description', label: 'Change Description', multiline: true, rows: 4,
+        example: 'HCloud System Team will fix the following:\n• Upgrade Microsoft Edge to 153.0.4234.32 Available (x64)\n• Upgrade Windows Server 2022 September Baseline (KB5122882)' },
+      { key: 'reasonNoCR', label: 'Reason for not raising Normal CR', multiline: true,
+        example: 'This is to address the vulnerability in SEA Production servers to address Threat Intel (Blue Moon Exploit).' },
+      { key: 'institutions', label: 'Institution(s) Affected', shade: true, example: 'AIC' },
       { key: 'deployWindow', label: 'Deployment window (Start and End Date/Time, including rollback)', type: 'window' },
       { key: 'downtime', label: 'Downtime Window (Start and End Date/Time, including rollback)', type: 'window' },
-      { key: 'impact', label: 'Business Impact', multiline: true, shade: true },
-      { key: 'dependencies', label: 'Indicate System Dependencies', multiline: true },
-      { key: 'rollback', label: 'Is there roll-back plan?', multiline: true, shade: true },
-      { key: 'directorApproval', label: 'Program/Infra Director Approval', shade: true },
-      { key: 'ownerApproval', label: 'System Owner/Custodian Approval' },
-      { key: 'uat', label: 'UAT signoff', multiline: true },
-      { key: 'implPlan', label: 'Implementation Plan', multiline: true }
+      { key: 'impact', label: 'Business Impact', multiline: true, shade: true, example: 'Users might experience slowness and downtime during implementation' },
+      { key: 'dependencies', label: 'Indicate System Dependencies', multiline: true, example: 'Not Applicable' },
+      { key: 'rollback', label: 'Is there roll-back plan?', multiline: true, shade: true, example: 'Yes' },
+      { key: 'directorApproval', label: 'Program/Infra Director Approval', shade: true, example: 'Tan Tit Keat' },
+      { key: 'ownerApproval', label: 'System Owner/Custodian Approval', example: 'Mark Ong Kian Chong (AIC)' },
+      { key: 'uat', label: 'UAT signoff', multiline: true, example: '<<Re_ SR-408935 [PACES] Emergency Patch Bluemoon Threat Intel ASAP.msg' },
+      { key: 'implPlan', label: 'Implementation Plan', multiline: true, example: '<<ECR-673 - Implementation Plan v2.5' }
     ],
     introHtml: ({ data, esc, listItems, joinItems }) =>
       `I would like to seek your email approval for <b>Emergency Change ${esc(data.ecrNumber)}</b> – To roll out VA scan issue fixes to resolve ${esc(joinItems(listItems(data.changes)))}.`,

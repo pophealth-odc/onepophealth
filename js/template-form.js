@@ -109,14 +109,26 @@ const PHTemplate = (() => {
     const addressee = () => data.approvals.find(a => a.status !== 'Approved') || data.approvals[data.approvals.length - 1];
 
     // ---------- inputs ----------
-    function input(key, { multiline, placeholder, rows } = {}) {
-      const node = multiline ? el('textarea', { rows: rows || 2, placeholder }) : el('input', { placeholder });
+    function input(key, { multiline, placeholder, rows, example } = {}) {
+      const node = multiline ? el('textarea', { rows: rows || 2, placeholder: example || placeholder }) : el('input', { placeholder: example || placeholder });
       node.value = data[key] || '';
       node.oninput = () => { data[key] = node.value; save(); };
+      if (example) useExampleOnTab(node);
       return node;
     }
 
-    function windowInput(key) {
+    // Tab in an empty field fills in the grey example (and stays there to edit); the next Tab moves on.
+    function useExampleOnTab(node) {
+      node.addEventListener('keydown', (e) => {
+        if (e.key !== 'Tab' || e.shiftKey || node.value !== '' || !node.placeholder) return;
+        e.preventDefault();
+        node.value = node.placeholder;
+        node.dispatchEvent(new Event('input', { bubbles: true }));
+        node.setSelectionRange?.(node.value.length, node.value.length);
+      });
+    }
+
+    function windowInput(key, noteExample) {
       const w = data[key];
       const preview = el('div', { class: 'ecr-window-preview' });
       const warning = el('div', { class: 'ecr-window-warning' });
@@ -140,9 +152,10 @@ const PHTemplate = (() => {
         pickers[prefix] = { date, time };
         return el('div', { class: 'ecr-window-point' }, [el('span', { class: 'ecr-window-label', text: label }), date, time]);
       };
-      const note = el('input', { placeholder: 'Note (optional), e.g. Broadcast Message has been sent to the users' });
+      const note = el('input', { placeholder: noteExample || 'Note (optional)' });
       note.value = w.note || '';
       note.oninput = () => { w.note = note.value; save(); };
+      if (noteExample) useExampleOnTab(note);
       const nodes = [point('start', 'Start'), point('end', 'End'), preview, warning, note];
       refresh();
       return nodes;
@@ -152,8 +165,8 @@ const PHTemplate = (() => {
 
     function fieldInput(f) {
       if (f.type === 'custom') return f.render(ctx);
-      if (f.type === 'window') return windowInput(f.key);
-      if (f.type === 'list') return input(f.key, { multiline: true, rows: f.rows || 2, placeholder: f.placeholder });
+      if (f.type === 'window') return windowInput(f.key, f.noteExample);
+      if (f.type === 'list') return input(f.key, { multiline: true, rows: f.rows || 2, placeholder: f.placeholder, example: f.example });
       if (f.type === 'select') {
         const node = el('select', {}, f.options.map(o => el('option', { text: o })));
         if (!f.options.includes(data[f.key])) data[f.key] = f.options[0];
@@ -216,10 +229,10 @@ const PHTemplate = (() => {
     onSave.push(refreshSubject);
     const myRequests = el('div', { class: 'req-list' });
 
-    $('app').replaceChildren(
+    $('app').replaceChildren(...[ // optional sections are null; filtered out below so they don't print as "null"
       el('h1', { text: cfg.title }),
       el('p', { class: 'muted', text: canSubmit
-        ? 'Fill in the form and click Submit for approval. Once an Approver approves it, the email unlocks under My requests — copy it there and paste into Outlook (Ctrl+V).'
+        ? 'Fill in the form and click Submit for approval. Once an Approver approves it, the email unlocks under My requests — copy it there and paste into Outlook (Ctrl+V). Tip: press Tab in an empty field to use its grey example.'
         : `Your role (${session.role}) can view this template but not submit change requests.` }),
       subjectFields.length ? el('h3', { class: 'ecr-sub', text: 'Email subject' }) : null,
       subjectFields.length ? el('table', { class: 'ecr-table ecr-intro' }, el('tbody', {}, [
@@ -258,7 +271,7 @@ const PHTemplate = (() => {
         button('↻ Refresh', 'btn btn-sm', loadMyRequests)
       ]) : null,
       canSubmit ? myRequests : null
-    );
+    ].filter(Boolean));
     refreshSubject();
 
     function renderApprovals() {
@@ -457,8 +470,8 @@ const PHTemplate = (() => {
   const SUBJECT_FIELDS = [
     { key: 'subjectPrefix', label: 'Prefix', type: 'select', options: [AUTO_PREFIX, '[Action Required]'],
       hint: 'Automatic follows the Deployment Approval table: the first approver not yet Approved.' },
-    { key: 'systemId', label: 'System ID', placeholder: 'e.g. S1532 (taken from System Name if it contains one)' },
-    { key: 'changeTitle', label: 'Change title', placeholder: 'e.g. Request to fix Microsoft Edge and Windows Patch for PACES HDC Production Server/s' }
+    { key: 'systemId', label: 'System ID', example: 'S1532', hint: 'Taken from System Name if it contains one.' },
+    { key: 'changeTitle', label: 'Change title', example: 'Request to Remediate VA Items' }
   ];
   function subjectParts(data, systemName) {
     const name = String(systemName || '').trim();
