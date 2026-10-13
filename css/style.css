@@ -405,3 +405,10 @@ body.admin { background: var(--ui-bg); font-family: var(--ui-font); color: var(-
   background: var(--ui-surface-2); border: 1px solid var(--ui-border); border-radius: 8px; padding: 10px 12px;
   font: 12px ui-monospace, Consolas, monospace; overflow: auto; max-height: 280px; white-space: pre;
 }
+
+/* view-only email preview (copy unlocks after approval) */
+.ecr-preview-locked { position: relative; user-select: none; -webkit-user-select: none; }
+.ecr-preview-locked::after {
+  content: 'PREVIEW — NOT APPROVED'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  font: 700 48px var(--ui-font); color: rgba(220, 38, 38, .12); transform: rotate(-18deg); pointer-events: none; letter-spacing: .05em;
+}

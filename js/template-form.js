@@ -168,7 +168,7 @@ const PHTemplate = (() => {
     function fieldHtml(f) {
       if (f.type === 'custom') return f.html(ctx);
       if (f.type === 'window') return [esc(formatRange(data[f.key])), lines(data[f.key].note)].filter(Boolean).join('<br>');
-      if (f.type === 'list') return listItems(data[f.key]).map((s, i) => `${i + 1}.&nbsp;&nbsp;&nbsp;${esc(s)}`).join('<br>');
+      if (f.type === 'list') return listItems(data[f.key]).map(esc).join('<br>');
       return lines(data[f.key]);
     }
     function fieldText(f) {
@@ -187,11 +187,16 @@ const PHTemplate = (() => {
 
     const approvalRows = el('tbody');
     const error = el('div', { class: 'error' });
-    const preview = el('div', { class: 'ecr-preview' });
+    // Preview is view-only: the email can only be copied from My requests once approved.
+    const preview = el('div', { class: 'ecr-preview ecr-preview-locked', title: 'Preview only — copy is available after approval' });
+    for (const evt of ['copy', 'cut', 'contextmenu', 'dragstart', 'selectstart']) preview.addEventListener(evt, (e) => {
+      e.preventDefault();
+      if (evt === 'copy' || evt === 'cut' || evt === 'contextmenu') toast('Preview only — you can copy the email after it is approved');
+    });
     const previewWrap = el('section', {}, [
       el('div', { class: 'ecr-preview-head' }, [
-        el('h3', { class: 'ecr-sub', text: 'Email preview' }),
-        button('Copy email again', 'btn btn-sm', copyEmail)
+        el('h3', { class: 'ecr-sub', text: 'Email preview (not approved — copying is disabled)' }),
+        button('Close preview', 'btn btn-sm', () => { previewWrap.hidden = true; preview.replaceChildren(); })
       ]),
       preview
     ]);
@@ -370,10 +375,6 @@ const PHTemplate = (() => {
       }
     }
 
-    async function copyEmail() {
-      const ok = await copyRich(buildEmailHtml(), buildEmailText(), preview);
-      toast(ok ? 'Email copied — paste into Outlook with Ctrl+V' : 'Copy failed — select the preview and press Ctrl+C');
-    }
 
     // ---------- my requests ----------
     async function loadMyRequests() {
