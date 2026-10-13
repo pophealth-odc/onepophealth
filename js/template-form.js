@@ -89,8 +89,10 @@ const PHTemplate = (() => {
     $('siteTitle').textContent = cfg.shortTitle || cfg.title;
 
     const colors = { light: '#e9eef7', dark: '#d0dcef', ...cfg.colors };
+    const subjectFields = cfg.subjectFields || [];
     const introFields = cfg.introFields || [];
-    const allFields = [...introFields, ...cfg.fields];
+    const allFields = [...subjectFields, ...introFields, ...cfg.fields];
+    const canSubmit = PH.can(session, 'submit');
 
     const data = Object.assign(
       { approvals: cfg.approvers.map(division => ({ division, name: '', status: STATUSES[0], attachment: '' })) },
@@ -100,7 +102,8 @@ const PHTemplate = (() => {
     for (const f of allFields) {
       if (f.type === 'window' && typeof data[f.key] !== 'object') data[f.key] = { note: data[f.key] || '' };
     }
-    const save = () => PH.writeLocal(cfg.draftKey, data);
+    const onSave = []; // e.g. the live subject preview
+    const save = () => { PH.writeLocal(cfg.draftKey, data); onSave.forEach(fn => fn()); };
 
     // The approver who still needs to approve: first one not yet Approved (the last one if all have).
     const addressee = () => data.approvals.find(a => a.status !== 'Approved') || data.approvals[data.approvals.length - 1];
@@ -151,6 +154,13 @@ const PHTemplate = (() => {
       if (f.type === 'custom') return f.render(ctx);
       if (f.type === 'window') return windowInput(f.key);
       if (f.type === 'list') return input(f.key, { multiline: true, rows: f.rows || 2, placeholder: f.placeholder });
+      if (f.type === 'select') {
+        const node = el('select', {}, f.options.map(o => el('option', { text: o })));
+        if (!f.options.includes(data[f.key])) data[f.key] = f.options[0];
+        node.value = data[f.key];
+        node.onchange = () => { data[f.key] = node.value; save(); };
+        return node;
+      }
       return input(f.key, f);
     }
     const cellBg = (f) => f.bg || (f.shade ? colors.dark : colors.light);
@@ -196,9 +206,21 @@ const PHTemplate = (() => {
     const infoHead = el('thead', {}, el('tr', {}, [el('th', { text: 'Information' }), el('th', { text: 'Description' })]));
     if (cfg.headerAlign === 'left') infoHead.classList.add('align-left');
 
+    const subjectPreview = el('div', { class: 'ecr-subject-preview' });
+    const refreshSubject = () => { subjectPreview.textContent = cfg.subject(ctx); };
+    onSave.push(refreshSubject);
+    const myRequests = el('div', { class: 'req-list' });
+
     $('app').replaceChildren(
       el('h1', { text: cfg.title }),
-      el('p', { class: 'muted', text: 'Fill in the form, then click Create template. The email is copied with formatting, so you can paste it straight into Outlook (Ctrl+V).' }),
+      el('p', { class: 'muted', text: canSubmit
+        ? 'Fill in the form and click Submit for approval. Once an Approver approves it, the email unlocks under My requests — copy it there and paste into Outlook (Ctrl+V).'
+        : `Your role (${session.role}) can view this template but not submit change requests.` }),
+      subjectFields.length ? el('h3', { class: 'ecr-sub', text: 'Email subject' }) : null,
+      subjectFields.length ? el('table', { class: 'ecr-table ecr-intro' }, el('tbody', {}, [
+        ...rows(subjectFields),
+        el('tr', {}, [el('th', { text: 'Subject (preview)' }), el('td', {}, subjectPreview)])
+      ])) : null,
       introFields.length ? el('h3', { class: 'ecr-sub', text: 'Email intro' }) : null,
       introFields.length ? el('table', { class: 'ecr-table ecr-intro' }, el('tbody', {}, rows(introFields))) : null,
       introFields.length ? el('h3', { class: 'ecr-sub', text: 'Details' }) : null,
@@ -217,16 +239,22 @@ const PHTemplate = (() => {
       el('p', { class: 'muted ecr-hint', text: 'The email is addressed to the first approver whose status is not Approved.' }),
       error,
       el('div', { class: 'props-actions' }, [
-        button('Create template', 'btn btn-primary', create),
-        button('Copy subject', 'btn', async () => { await navigator.clipboard.writeText(cfg.subject(ctx)); toast('Subject copied'); }),
+        canSubmit ? button('Submit for approval', 'btn btn-primary', submit) : null,
+        button('Preview email', 'btn', showPreview),
         button('Clear form', 'btn btn-danger', () => {
           if (!confirm('Clear all fields?')) return;
           PH.writeLocal(cfg.draftKey, null);
           location.reload();
         })
       ]),
-      previewWrap
+      previewWrap,
+      canSubmit ? el('div', { class: 'req-head' }, [
+        el('h3', { class: 'ecr-sub', text: 'My requests' }),
+        button('↻ Refresh', 'btn btn-sm', loadMyRequests)
+      ]) : null,
+      canSubmit ? myRequests : null
     );
+    refreshSubject();
 
     function renderApprovals() {
       approvalRows.replaceChildren(...data.approvals.map((a, i) => {
@@ -302,7 +330,7 @@ const PHTemplate = (() => {
     }
 
     // ---------- actions ----------
-    async function create() {
+    function validate() {
       const missing = cfg.validate(ctx);
       const to = addressee();
       if (!to) missing.push('at least one approver');
@@ -312,18 +340,81 @@ const PHTemplate = (() => {
         ...allFields.filter(f => f.type === 'window').map(f => windowError(data[f.key], f.label.split(/[\n(]/)[0].trim()))
       ].filter(Boolean);
       error.textContent = errors.join(' ');
-      if (errors.length) return;
+      return !errors.length;
+    }
 
-      preview.innerHTML = buildEmailHtml();
+    function showPreview() {
+      if (!validate()) return;
+      preview.innerHTML = buildEmailHtml(); // built by this page from escaped form values
       previewWrap.hidden = false;
-      await copyEmail();
       previewWrap.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    async function submit(e) {
+      if (!validate()) return;
+      const btn = e.currentTarget;
+      btn.disabled = true;
+      try {
+        const db = await PH.approvalsDb();
+        await db.insert({
+          type: cfg.type, ticket: cfg.ticket(ctx), subject: cfg.subject(ctx), form: JSON.parse(JSON.stringify(data)),
+          email_html: buildEmailHtml(), email_text: buildEmailText(), submitted_by: session.username, status: 'pending'
+        });
+        toast('✔ Submitted — waiting for an Approver');
+        await loadMyRequests();
+        myRequests.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } catch (err) {
+        error.textContent = `✖ Could not submit: ${err.message}`;
+      } finally {
+        btn.disabled = false;
+      }
     }
 
     async function copyEmail() {
       const ok = await copyRich(buildEmailHtml(), buildEmailText(), preview);
       toast(ok ? 'Email copied — paste into Outlook with Ctrl+V' : 'Copy failed — select the preview and press Ctrl+C');
     }
+
+    // ---------- my requests ----------
+    async function loadMyRequests() {
+      if (!canSubmit) return;
+      myRequests.replaceChildren(el('div', { class: 'muted', text: 'Loading…' }));
+      try {
+        const db = await PH.approvalsDb();
+        const list = await db.list(`select=*&type=eq.${cfg.type}&submitted_by=eq.${encodeURIComponent(session.username)}&order=submitted_at.desc&limit=50`);
+        myRequests.replaceChildren(...(list.length ? list.map(requestCard) : [el('div', { class: 'muted', text: 'No requests yet.' })]));
+      } catch (err) {
+        myRequests.replaceChildren(el('div', { class: 'muted', text: err.message }));
+      }
+    }
+
+    function requestCard(r) {
+      const when = (t) => t ? new Date(t).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' }) : '';
+      const status = { pending: 'Pending approval', approved: 'Approved', rejected: 'Rejected' }[r.status] || r.status;
+      const actions = [];
+      if (r.status === 'approved') {
+        actions.push(
+          button('Copy email', 'btn btn-primary btn-sm', async () => {
+            const ok = await copyRich(r.email_html, r.email_text, null);
+            toast(ok ? 'Email copied — paste into Outlook with Ctrl+V' : 'Copy failed — your browser blocked clipboard access');
+          }),
+          button('Copy subject', 'btn btn-sm', async () => { await navigator.clipboard.writeText(r.subject); toast('Subject copied'); })
+        );
+      }
+      actions.push(button('Load into form', 'btn btn-sm', () => {
+        if (!confirm('Replace the current form with this request?')) return;
+        PH.writeLocal(cfg.draftKey, r.form);
+        location.reload();
+      }));
+      return el('div', { class: `req-card req-${r.status}` }, [
+        el('div', { class: 'req-top' }, [el('span', { class: 'req-status', text: status }), el('span', { class: 'req-subject', text: r.subject })]),
+        el('div', { class: 'req-meta', text: `Submitted ${when(r.submitted_at)}` +
+          (r.decided_by ? ` · ${status} by ${r.decided_by} ${when(r.decided_at)}` : '') }),
+        r.comment ? el('div', { class: 'req-comment', text: `Comment: ${r.comment}` }) : null,
+        el('div', { class: 'props-actions' }, actions)
+      ]);
+    }
+    loadMyRequests();
   }
 
   async function copyRich(html, text, fallbackNode) {
@@ -334,6 +425,10 @@ const PHTemplate = (() => {
       })]);
       return true;
     } catch {
+      // No page element to select (stored request): fall back to plain text.
+      if (!fallbackNode) {
+        try { await navigator.clipboard.writeText(text); return true; } catch { return false; }
+      }
       // Fallback for browsers without ClipboardItem: copy the rendered preview selection.
       const range = document.createRange();
       range.selectNodeContents(fallbackNode);
@@ -355,5 +450,29 @@ const PHTemplate = (() => {
     toastTimer = setTimeout(() => t.classList.remove('show'), 2500);
   }
 
-  return { mount };
+  // ---------- subject line ----------
+  // "[For RO Approval]S1532_PACES | Emergency Change | ECR-673 - Request to fix …"
+  const SUBJECT_FIELDS = [
+    { key: 'subjectPrefix', label: 'Prefix', type: 'select', options: ['[For RO Approval]', '[Action Required]'] },
+    { key: 'systemId', label: 'System ID', placeholder: 'e.g. S1532 (taken from System Name if it contains one)' },
+    { key: 'changeTitle', label: 'Change title', placeholder: 'e.g. Request to fix Microsoft Edge and Windows Patch for PACES HDC Production Server/s' }
+  ];
+  function subjectParts(data, systemName) {
+    const name = String(systemName || '').trim();
+    const id = String(data.systemId || '').trim() || (name.match(/\b(S\d{3,})\b/i) || [])[1] || '';
+    // "AIC SEA (S1092)" → "AIC SEA" when the bracket is just the System ID.
+    const shortName = id ? name.replace(new RegExp(`\\s*\\(\\s*${id}\\s*\\)\\s*$`, 'i'), '') : name;
+    return { id, name: shortName, title: String(data.changeTitle || '').trim() };
+  }
+  function subjectLine(data, { type, ticket, systemName }) {
+    const p = subjectParts(data, systemName);
+    return `${data.subjectPrefix || SUBJECT_FIELDS[0].options[0]}${p.id || '<System ID>'}_${p.name || '<System Name>'} | ${type} | ` +
+      `${String(ticket || '').trim() || '<Ticket>'} - ${p.title || '<Change title>'}`;
+  }
+  function subjectMissing(data, systemName) {
+    const p = subjectParts(data, systemName);
+    return [!p.id && 'System ID', !p.name && 'System Name', !p.title && 'Change title'].filter(Boolean);
+  }
+
+  return { mount, SUBJECT_FIELDS, subjectLine, subjectMissing };
 })();

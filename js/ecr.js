@@ -68,6 +68,8 @@
     approvalsTitle: 'Deployment Approval:',
     approvalsUnderline: true,
     approvers: ['Reporting Officer', 'Product Specialist', 'Service Lead', 'Project Director'],
+    type: 'ecr',
+    subjectFields: PHTemplate.SUBJECT_FIELDS,
     // `shade` mirrors the darker rows in the original template.
     fields: [
       { key: 'ecrNumber', label: 'Emergency Change Number', placeholder: 'e.g. ECR-673' },
@@ -92,9 +94,10 @@
       `I would like to seek your email approval for <b>Emergency Change ${esc(data.ecrNumber)}</b> – To roll out VA scan issue fixes to resolve ${esc(joinItems(listItems(data.changes)))}.`,
     introText: ({ data, listItems, joinItems }) =>
       `I would like to seek your email approval for Emergency Change ${data.ecrNumber} – To roll out VA scan issue fixes to resolve ${joinItems(listItems(data.changes))}.`,
-    subject: ({ data }) => `Email Approval for Emergency Change ${data.ecrNumber || ''} – VA scan issue fixes`.replace(/\s+/g, ' ').trim(),
+    ticket: ({ data }) => String(data.ecrNumber || '').trim(),
+    subject: ({ data }) => PHTemplate.subjectLine(data, { type: 'Emergency Change', ticket: data.ecrNumber, systemName: data.system }),
     validate({ data, listItems }) {
-      const missing = [];
+      const missing = PHTemplate.subjectMissing(data, data.system);
       if (!String(data.ecrNumber || '').trim()) missing.push('Emergency Change Number');
       if (!/^[123]\. /.test(data.changeType || '')) missing.push('Emergency Change Type (1, 2 or 3)');
       if (isUnplanned(data) && !String(data.background || '').trim()) missing.push('Background (justification required for Unplanned Change)');

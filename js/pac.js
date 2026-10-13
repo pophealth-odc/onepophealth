@@ -13,6 +13,8 @@
     approvalsUnderline: false,
     approvers: ['Reporting Officer', 'Product Specialist', 'Service Lead', 'Project Director'],
     headerAlign: 'left',
+    type: 'pac',
+    subjectFields: PHTemplate.SUBJECT_FIELDS,
     introFields: [
       { key: 'purpose', label: 'Purpose (bold, after the CR number)', multiline: true,
         placeholder: 'for System Team to perform routine monthly maintenance for Aug-26 baseline for SEA Production servers',
@@ -40,9 +42,10 @@
     },
     introText: (ctx) =>
       `I would like to seek your approval for pre-approved change request ${ctx.joinItems(crs(ctx))} - for ${purpose(ctx)}.${reason(ctx) ? ' ' + reason(ctx) : ''}`,
-    subject: (ctx) => `Approval for Pre-Approved Change ${ctx.joinItems(crs(ctx))} – ${ctx.data.summary || ''}`.replace(/\s+/g, ' ').replace(/ – $/, '').trim(),
+    ticket: (ctx) => crs(ctx).join(', '),
+    subject: (ctx) => PHTemplate.subjectLine(ctx.data, { type: 'Pre-Approved Change', ticket: crs(ctx).join(', '), systemName: ctx.data.system }),
     validate(ctx) {
-      const missing = [];
+      const missing = PHTemplate.subjectMissing(ctx.data, ctx.data.system);
       if (!crs(ctx).length) missing.push('Change Request No');
       if (!purpose(ctx)) missing.push('Purpose or Change Summary');
       return missing;

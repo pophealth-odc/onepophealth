@@ -341,7 +341,7 @@
   // ---------- users ----------
   function renderUsers() {
     $('userRows').replaceChildren(...state.users.map((u, i) => {
-      const role = el('select', {}, ['User', 'Admin'].map(r => {
+      const role = el('select', {}, PH.ROLES.map(r => {
         const o = el('option', { text: r });
         if (r.toLowerCase() === String(u.role).toLowerCase()) o.selected = true;
         return o;
@@ -382,6 +382,47 @@
     renderUsers();
     toast(`Added ${username}`);
   });
+  $('newRole').replaceChildren(...PH.ROLES.map(r => el('option', { text: r })));
+
+  // ---------- approvals settings (Supabase) ----------
+  // Stored in the layout (settings.approvals) and published with it, like everything else on this site.
+  function apprSettings() {
+    state.layout.settings = state.layout.settings || {};
+    state.layout.settings.approvals = state.layout.settings.approvals || { url: '', anonKey: '' };
+    return state.layout.settings.approvals;
+  }
+  function renderApprSettings() {
+    const s = apprSettings();
+    $('apprUrl').value = s.url || '';
+    $('apprKey').value = s.anonKey || '';
+  }
+  const apprStatus = (msg) => { $('apprStatus').textContent = msg; };
+  $('apprUrl').oninput = () => { apprSettings().url = $('apprUrl').value.trim(); saveLayout(); };
+  $('apprKey').oninput = () => {
+    const key = $('apprKey').value.trim();
+    if (PH.jwtRole(key) === 'service_role') {
+      apprStatus('✖ That is a service_role key — it must never be put on a public site. Use the anon (public) key.');
+      return;
+    }
+    apprSettings().anonKey = key;
+    saveLayout();
+    apprStatus('');
+  };
+  $('apprTestBtn').onclick = async () => {
+    apprStatus('Testing…');
+    try {
+      const db = await PH.approvalsDb();
+      const rows = await db.list('select=id&limit=1');
+      apprStatus(`✔ Connected — the change_requests table is reachable (${rows.length ? 'has requests' : 'empty'}). Click Publish so everyone gets these settings.`);
+    } catch (err) {
+      apprStatus(`✖ ${err.message} — check the URL/key, and that the setup SQL has been run.`);
+    }
+  };
+  $('apprCopySqlBtn').onclick = async () => {
+    await navigator.clipboard.writeText($('apprSql').textContent);
+    toast('SQL copied — paste it into Supabase → SQL Editor and click Run');
+  };
+  renderApprSettings();
 
   // ---------- publish ----------
   const gh = PH.readLocal(PH.KEYS.github) || {};
@@ -723,6 +764,7 @@
       state.layout = data;
       state.selectedId = null;
       saveLayout();
+      renderApprSettings();
       renderCanvas();
       renderProps();
       toast('Layout imported');
@@ -739,6 +781,7 @@
     state.selectedId = null;
     renderCanvas();
     renderProps();
+    renderApprSettings();
     renderUsers();
     updateStatus();
     toast('Drafts discarded');

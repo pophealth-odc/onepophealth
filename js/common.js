@@ -60,6 +60,17 @@ const PH = (() => {
   function clearSession() { writeLocal(KEYS.session, null); }
   function isAdmin(session) { return !!session && String(session.role).toLowerCase() === 'admin'; }
 
+  // Roles: Admin (everything), Approver (VA + approve change requests), User (VA + submit), View (read-only).
+  const ROLES = ['User', 'Approver', 'View', 'Admin'];
+  const PERMS = {
+    vaClick: ['admin', 'approver', 'user'],
+    submit: ['admin', 'approver', 'user'],
+    approve: ['admin', 'approver']
+  };
+  function can(session, perm) {
+    return !!session && (PERMS[perm] || []).includes(String(session.role).toLowerCase());
+  }
+
   function requireLogin() {
     const s = getSession();
     if (!s) { location.replace('index.html'); return null; }
@@ -69,6 +80,36 @@ const PH = (() => {
     const s = requireLogin();
     if (s && !isAdmin(s)) { location.replace('main.html'); return null; }
     return s;
+  }
+
+  // ---------- approvals storage (Supabase REST) ----------
+  // Settings live in layout.json → settings.approvals { url, anonKey } (Admin Dashboard → Users).
+  // Only the public anon key may be used here; a service_role key would give every visitor full DB access.
+  function jwtRole(key) {
+    try { return JSON.parse(atob(String(key).split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).role || ''; } catch { return ''; }
+  }
+  async function approvalsDb() {
+    const layout = await getLayout();
+    const cfg = layout.settings?.approvals || {};
+    const url = String(cfg.url || '').trim().replace(/\/+$/, ''), key = String(cfg.anonKey || '').trim();
+    if (!/^https:\/\//i.test(url) || !key) throw new Error('Approvals are not set up yet — an admin needs to add the Supabase settings (Admin Dashboard → Users).');
+    if (jwtRole(key) === 'service_role') throw new Error('The approvals key is a service_role key — an admin must replace it with the anon key.');
+    const headers = { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' };
+    const call = async (method, path, body, prefer) => {
+      const res = await fetch(`${url}/rest/v1/${path}`, {
+        method, headers: prefer ? { ...headers, Prefer: prefer } : headers, body: body && JSON.stringify(body), cache: 'no-store'
+      });
+      const text = await res.text();
+      const json = text ? JSON.parse(text) : null;
+      if (!res.ok) throw new Error(json?.message || `HTTP ${res.status}`);
+      return json;
+    };
+    return {
+      list: (query) => call('GET', `change_requests?${query}`),
+      insert: (row) => call('POST', 'change_requests', row, 'return=representation').then(r => r[0]),
+      // Only updates while still pending, so two approvers can't both decide the same request.
+      decide: (id, fields) => call('PATCH', `change_requests?id=eq.${encodeURIComponent(id)}&status=eq.pending`, fields, 'return=representation')
+    };
   }
 
   // ---------- utils ----------
@@ -237,18 +278,27 @@ const PH = (() => {
   function vaSummary(p) {
     const base = safeUrl(p.trackerUrl) || '#';
     const tiles = VA_TILES.filter(t => p[t.flag] !== false);
+    // View-only users see the numbers but can't open the VA Tracker.
+    const clickable = can(getSession(), 'vaClick');
+    const tile = (t) => clickable
+      ? el('a', { class: `w-va-tile tone-${t.key}`, href: `${base}#open=${t.key}` })
+      : el('div', { class: `w-va-tile tone-${t.key} w-va-static`, title: 'View access: details are not available' });
     const nums = {};
     const box = el('div', { class: 'w-va' }, [
       el('div', { class: 'w-va-head' }, [
         p.title ? el('h3', { text: p.title }) : null,
         el('span', { class: 'w-va-meta', text: 'Loading VA data…' }),
-        el('a', { class: 'w-va-open', href: base, text: 'Open VA Tracker →' })
+        clickable ? el('a', { class: 'w-va-open', href: base, text: 'Open VA Tracker →' }) : null
       ]),
-      el('div', { class: 'w-va-tiles' }, tiles.map(t => el('a', { class: `w-va-tile tone-${t.key}`, href: `${base}#open=${t.key}` }, [
-        nums[t.key] = el('div', { class: 'w-va-num', text: '…' }),
-        el('div', { class: 'w-va-label', text: t.label }),
-        el('div', { class: 'w-va-sub', text: t.sub })
-      ])))
+      el('div', { class: 'w-va-tiles' }, tiles.map(t => {
+        const node = tile(t);
+        node.append(
+          nums[t.key] = el('div', { class: 'w-va-num', text: '…' }),
+          el('div', { class: 'w-va-label', text: t.label }),
+          el('div', { class: 'w-va-sub', text: t.sub })
+        );
+        return node;
+      }))
     ]);
     const meta = box.querySelector('.w-va-meta');
     loadVa().then(data => {
@@ -375,6 +425,7 @@ const PH = (() => {
         { key: 'image', label: 'Image URL', type: 'text' },
         { key: 'linkText', label: 'Link text', type: 'text' },
         { key: 'linkUrl', label: 'Link URL', type: 'text' },
+        { key: 'clickable', label: 'Make the whole card clickable (opens the Link URL; hides the link text)', type: 'checkbox' },
         { key: 'background', label: 'Background', type: 'color' },
         { key: 'feed', label: 'Live content (replaces body)', type: 'select', options: [
           { value: '', label: 'None' },
@@ -389,13 +440,29 @@ const PH = (() => {
         const body = p.feed === 'leave' ? upcomingLeave(p) : p.body ? el('p', { text: p.body }) : null;
         // A white (default) background follows the light/dark theme; any other colour is kept as chosen.
         const plain = !p.background || /^#?f{3}(f{3})?$/i.test(p.background);
-        return el('div', { class: `w-card${plain ? ' w-card-plain' : ''}`, style: { background: plain ? undefined : p.background } }, [
+        const href = safeUrl(p.linkUrl);
+        const whole = !!(p.clickable && href);
+        const card = el('div', { class: `w-card${plain ? ' w-card-plain' : ''}${whole ? ' w-card-link' : ''}`, style: { background: plain ? undefined : p.background } }, [
           safeUrl(p.image) ? el('img', { src: safeUrl(p.image), alt: '' }) : null,
           el('h3', { text: p.title }),
           body,
           linkList(p.items),
-          p.linkText ? el('a', { href: safeUrl(p.linkUrl) || '#', text: p.linkText + ' →', style: { color: theme.accent } }) : null
+          p.linkText && !whole ? el('a', { href: href || '#', text: p.linkText + ' →', style: { color: theme.accent } }) : null
         ]);
+        if (whole) {
+          // A click anywhere opens the link (list links inside the card still work on their own).
+          // Not inside the admin designer, where a click selects the block.
+          Object.assign(card, { tabIndex: 0, title: `Open ${p.title || 'link'}` });
+          card.setAttribute('role', 'link');
+          const go = (e) => {
+            if (card.closest('.canvas') || e.target.closest('a')) return;
+            if (/^https?:/i.test(href) && (e.ctrlKey || e.metaKey)) window.open(href, '_blank', 'noopener');
+            else location.href = href;
+          };
+          card.addEventListener('click', go);
+          card.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(e); });
+        }
+        return card;
       }
     },
     vaSummary: {
@@ -529,7 +596,7 @@ const PH = (() => {
   return {
     KEYS, readLocal, writeLocal, fetchJSON,
     getUsers, getPublishedUsers, getLayout, getPublishedLayout, reconcileDrafts, draftState,
-    getSession, setSession, clearSession, isAdmin, requireLogin, requireAdmin,
+    getSession, setSession, clearSession, isAdmin, requireLogin, requireAdmin, ROLES, can, approvalsDb, jwtRole,
     uid, clone, el, WIDGETS, THEME_FIELDS, applyTheme, renderBlock, renderPage, setColorMode
   };
 })();

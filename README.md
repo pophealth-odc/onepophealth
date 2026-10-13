@@ -43,3 +43,20 @@ The publish token never goes into the repo. It's kept in your browser only if yo
 ## Editing the code
 
 GitHub Pages lets browsers cache files for 10 minutes. When you change any file in `js/` or `css/`, bump the `?v=N` number on its `<script>` / `<link>` tags in `index.html`, `main.html` and `admin.html` so visitors don't get a mix of old and new files.
+
+## Roles
+
+| Role | Can do |
+|---|---|
+| **Admin** | Everything, including the Admin Dashboard |
+| **Approver** | Open the VA Tracker from the VA tiles; approve or reject change requests (`approvals.html`) |
+| **User** | Open the VA Tracker; submit Emergency / Pre-Approved Change requests |
+| **View** | Read-only: sees the page and VA numbers, but can't open the VA Tracker or submit |
+
+## Change request approvals
+
+The Emergency and Pre-Approved Change pages **submit** the email for approval. An Approver reviews it on **Approvals**, and once it's approved the submitter can **Copy email** / **Copy subject** under **My requests**. Approvers can't approve their own requests.
+
+Requests are stored in a Supabase table `change_requests`. One-time setup is in **Admin Dashboard → Users → Approvals storage**: run the SQL shown there, enter the project URL and **anon** key, then Publish.
+
+> Login is username-only, so roles are honour-system: anyone who types an Approver's username, or calls the API with the anon key, can approve. Don't rely on this for formal change control without real authentication.

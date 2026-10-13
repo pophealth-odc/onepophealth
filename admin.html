@@ -13,7 +13,7 @@
     })();
   </script>
   <title>Admin Dashboard</title>
-  <link rel="stylesheet" href="css/style.css?v=13">
+  <link rel="stylesheet" href="css/style.css?v=15">
 </head>
 <body class="admin">
   <div class="admin-top">
@@ -26,6 +26,7 @@
     </nav>
     <span class="spacer"></span>
     <span class="draft-status clean" id="draftStatus">All changes published</span>
+    <a class="btn btn-sm" href="approvals.html">Approvals</a>
     <a class="btn btn-sm" href="ecr.html">Emergency Change</a>
     <a class="btn btn-sm" href="pac.html">Pre-Approved Change</a>
     <a class="btn btn-sm" href="main.html">View main page</a>
@@ -65,11 +66,17 @@
   <section class="view page-view" id="view-users">
     <div class="box">
       <h2>Users</h2>
-      <p class="muted">Users who can log in. Admins see the Admin Dashboard button.</p>
+      <p class="muted">Users who can log in.</p>
+      <ul class="muted role-help">
+        <li><b>Admin</b> — everything, including this dashboard.</li>
+        <li><b>Approver</b> — opens the VA Tracker from the VA tiles and approves / rejects Emergency and Pre-Approved Change requests.</li>
+        <li><b>User</b> — opens the VA Tracker and submits change requests for approval.</li>
+        <li><b>View</b> — read-only: sees the page and VA numbers, but can't open the VA Tracker or submit requests.</li>
+      </ul>
       <form class="row" id="addUserForm">
         <div class="field"><label>Username</label><input id="newUsername" required></div>
         <div class="field"><label>Role</label>
-          <select id="newRole"><option>User</option><option>Admin</option></select>
+          <select id="newRole"></select>
         </div>
         <button class="btn btn-primary" type="submit">Add user</button>
       </form>
@@ -78,6 +85,60 @@
         <thead><tr><th>Username</th><th>Role</th><th></th></tr></thead>
         <tbody id="userRows"></tbody>
       </table>
+    </div>
+
+    <div class="box">
+      <h2>Approvals storage (Supabase)</h2>
+      <p class="muted">
+        Submitted change requests are stored in a <code>change_requests</code> table in Supabase so Approvers can see them.
+        One-time setup: open your Supabase project → <b>SQL Editor</b>, paste the SQL below and click <b>Run</b>.
+        Then enter the project URL and the <b>anon</b> key (Project Settings → API), click <b>Test</b>, and <b>Publish</b>.
+      </p>
+      <div class="row">
+        <div class="field"><label for="apprUrl">Supabase project URL</label><input id="apprUrl" placeholder="https://xxxx.supabase.co"></div>
+      </div>
+      <div class="field" style="margin-top:12px">
+        <label for="apprKey">Anon (public) key — never the service_role key</label>
+        <input id="apprKey" placeholder="eyJhbGciOi…" autocomplete="off">
+      </div>
+      <div class="props-actions">
+        <button class="btn" id="apprTestBtn" type="button">Test connection</button>
+        <button class="btn" id="apprCopySqlBtn" type="button">Copy setup SQL</button>
+      </div>
+      <p class="muted" id="apprStatus"></p>
+      <pre class="sql" id="apprSql">-- OnePopHealth approvals: run once in Supabase → SQL Editor
+create table if not exists public.change_requests (
+  id           bigint generated always as identity primary key,
+  type         text not null check (type in ('ecr', 'pac')),
+  ticket       text,
+  subject      text not null,
+  form         jsonb not null,
+  email_html   text not null,
+  email_text   text not null,
+  status       text not null default 'pending' check (status in ('pending', 'approved', 'rejected')),
+  submitted_by text not null,
+  submitted_at timestamptz not null default now(),
+  decided_by   text,
+  decided_at   timestamptz,
+  comment      text
+);
+alter table public.change_requests enable row level security;
+
+drop policy if exists "read requests" on public.change_requests;
+create policy "read requests" on public.change_requests
+  for select to anon using (true);
+
+drop policy if exists "submit pending requests" on public.change_requests;
+create policy "submit pending requests" on public.change_requests
+  for insert to anon with check (status = 'pending' and decided_by is null);
+
+drop policy if exists "decide pending requests" on public.change_requests;
+create policy "decide pending requests" on public.change_requests
+  for update to anon using (status = 'pending')
+  with check (status in ('approved', 'rejected') and decided_by is not null);
+
+grant select, insert, update on public.change_requests to anon;
+grant usage on all sequences in schema public to anon;</pre>
     </div>
   </section>
 
@@ -146,7 +207,7 @@
 
   <div class="toast" id="toast"></div>
 
-  <script src="js/common.js?v=4"></script>
-  <script src="js/admin.js?v=7"></script>
+  <script src="js/common.js?v=5"></script>
+  <script src="js/admin.js?v=8"></script>
 </body>
 </html>

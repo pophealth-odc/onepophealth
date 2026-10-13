@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script>
+    // Dark mode: saved choice, else the system setting (set before paint to avoid a flash).
+    (function () {
+      var t = null;
+      try { t = localStorage.getItem('ph_theme'); } catch (e) {}
+      if (!t) t = window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      document.documentElement.dataset.theme = t;
+    })();
+  </script>
+  <title>Approvals</title>
+  <link rel="stylesheet" href="css/style.css?v=15">
+</head>
+<body>
+  <header class="site-header">
+    <div class="inner">
+      <div class="site-title">Approvals</div>
+      <span class="user-chip" id="userChip"></span>
+      <a class="btn" href="main.html">Home</a>
+      <a class="btn btn-primary" id="adminBtn" href="admin.html" hidden>Admin Dashboard</a>
+      <button class="btn theme-toggle" type="button" data-theme-toggle>🌙 Dark</button>
+      <button class="btn" id="logoutBtn">Log out</button>
+    </div>
+  </header>
+
+  <main class="page approvals">
+    <div class="appr-toolbar">
+      <div class="seg" role="tablist">
+        <button class="seg-btn active" data-status="pending" type="button">Pending</button>
+        <button class="seg-btn" data-status="approved" type="button">Approved</button>
+        <button class="seg-btn" data-status="rejected" type="button">Rejected</button>
+      </div>
+      <select id="typeFilter">
+        <option value="">All types</option>
+        <option value="ecr">Emergency Change</option>
+        <option value="pac">Pre-Approved Change</option>
+      </select>
+      <button class="btn btn-sm" id="refreshBtn" type="button">↻ Refresh</button>
+      <span class="muted" id="count"></span>
+    </div>
+    <div class="error" id="error"></div>
+    <div class="req-list" id="list"></div>
+  </main>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="js/common.js?v=5"></script>
+  <script src="js/approvals.js?v=1"></script>
+</body>
+</html>

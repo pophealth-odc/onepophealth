@@ -13,13 +13,14 @@
     })();
   </script>
   <title>Home</title>
-  <link rel="stylesheet" href="css/style.css?v=13">
+  <link rel="stylesheet" href="css/style.css?v=15">
 </head>
 <body>
   <header class="site-header">
     <div class="inner">
       <div class="site-title" id="siteTitle"></div>
       <span class="user-chip" id="userChip"></span>
+      <a class="btn" id="approvalsBtn" href="approvals.html" hidden>Approvals</a>
       <a class="btn btn-primary" id="adminBtn" href="admin.html" hidden>Admin Dashboard</a>
       <button class="btn theme-toggle" type="button" data-theme-toggle>🌙 Dark</button>
       <button class="btn" id="logoutBtn">Log out</button>
@@ -32,7 +33,7 @@
     <div class="page-grid" id="page"></div>
   </main>
 
-  <script src="js/common.js?v=4"></script>
+  <script src="js/common.js?v=5"></script>
   <script>
     (async () => {
       const session = PH.requireLogin();
@@ -40,6 +41,14 @@
 
       document.getElementById('userChip').textContent = `${session.username} · ${session.role}`;
       if (PH.isAdmin(session)) document.getElementById('adminBtn').hidden = false;
+      if (PH.can(session, 'approve')) {
+        const btn = document.getElementById('approvalsBtn');
+        btn.hidden = false;
+        // Show how many requests are waiting (quietly skipped if approvals aren't set up yet).
+        PH.approvalsDb().then(db => db.list('select=id&status=eq.pending')).then(rows => {
+          if (rows.length) btn.textContent = `Approvals (${rows.length})`;
+        }).catch(() => {});
+      }
       document.getElementById('logoutBtn').onclick = () => { PH.clearSession(); location.href = 'index.html'; };
 
       try {
