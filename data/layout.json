@@ -1,6 +1,6 @@
 {
   "theme": {
-    "siteTitle": "{domain}",
+    "siteTitle": "Population Health",
     "background": "#f5f7fb",
     "text": "#1f2937",
     "accent": "#2563eb",
@@ -11,22 +11,22 @@
   },
   "blocks": [
     {
-      "id": "b1",
+      "id": "b6kafb4e",
       "type": "hero",
       "props": {
-        "domains": [
-          "Population Health",
-          "Operations"
-        ],
-        "title": "Welcome to {dashboard} Dashboard",
+        "title": "Welcome to OnePopHealth Dashboard",
         "subtitle": "",
         "background": "#2563eb",
         "color": "#ffffff",
         "image": "",
-        "buttonText": "",
-        "buttonUrl": "",
+        "buttonText": "Get started",
+        "buttonUrl": "#",
         "width": 12,
-        "padding": 0
+        "padding": 0,
+        "domains": [
+          "Population Health",
+          "Operations"
+        ]
       }
     },
     {
@@ -240,10 +240,6 @@
     }
   ],
   "settings": {
-    "dashboardNames": {
-      "Population Health": "OnePopHealth",
-      "Operations": "OneOperations"
-    },
     "domains": [
       "Population Health",
       "Operations"
