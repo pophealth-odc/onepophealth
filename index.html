@@ -28,10 +28,16 @@
     </form>
   </div>
 
-  <script src="js/common.js?v=10"></script>
+  <script src="js/common.js?v=11"></script>
   <script>
     (async () => {
-      if (PH.getSession()) { location.replace('main.html'); return; }
+      const params = new URLSearchParams(location.search);
+      // ?logout=1 — sent here by "Log out" in another module: sign out everywhere.
+      if (params.get('logout')) PH.clearSession();
+      // ?next=<url> — a module (Leave Tracker, VA Tracker, …) sent you here to sign in; go back afterwards, signed in.
+      const next = params.get('next');
+      const goNext = () => location.replace(next && PH.isModuleUrl(next) ? PH.ssoUrl(next) : 'main.html');
+      if (PH.getSession()) { goNext(); return; }
 
       try {
         const layout = await PH.getLayout();
@@ -53,7 +59,7 @@
           const user = users.find(u => u.username.toLowerCase() === name);
           if (!user) { error.textContent = 'Unknown username.'; return; }
           PH.setSession(user);
-          location.href = 'main.html';
+          goNext();
         } catch (err) {
           error.textContent = 'Could not load users: ' + err.message;
         }

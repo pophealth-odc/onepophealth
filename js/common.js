@@ -60,6 +60,33 @@ const PH = (() => {
   function clearSession() { writeLocal(KEYS.session, null); }
   function isAdmin(session) { return !!session && String(session.role).toLowerCase() === 'admin'; }
 
+  // ---------- single sign-on to the other modules ----------
+  // The Leave Tracker shares this site (pophealth-odc.github.io), so it reads this login directly.
+  // The VA Tracker and Knowledge Base live on kailknight.github.io, which can't see this browser storage,
+  // so links to them carry "#sso=<token>" (base64url JSON { u: username, t: issued-at }).
+  const SSO_MODULES = ['https://kailknight.github.io/VATracker', 'https://kailknight.github.io/knowledgebase',
+    'https://pophealth-odc.github.io/leavetracker'];
+  const isModuleUrl = (url) => SSO_MODULES.some(m => String(url).toLowerCase().startsWith(m.toLowerCase()));
+  function ssoToken(session = getSession()) {
+    if (!session) return '';
+    return btoa(JSON.stringify({ u: session.username, t: Date.now() })).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+  function ssoUrl(url) {
+    const token = ssoToken();
+    if (!token || !isModuleUrl(url)) return url;
+    const [base, hash = ''] = String(url).split('#');
+    return `${base}#${hash ? hash + '&' : ''}sso=${token}`;
+  }
+  // Add the token to every module link inside `root` (and refresh it when clicked, so it's never stale).
+  function decorateSso(root) {
+    root.querySelectorAll('a[href]').forEach(a => {
+      if (!isModuleUrl(a.href)) return;
+      const plain = a.getAttribute('href');
+      a.href = ssoUrl(plain);
+      a.addEventListener('click', () => { a.href = ssoUrl(plain); });
+    });
+  }
+
   // ---------- domains ----------
   // Each user belongs to a domain; dashboard blocks and feature pages can be limited to domains.
   // Users saved before domains existed count as the default domain.
@@ -207,22 +234,29 @@ const PH = (() => {
 
   function isoDate(d) { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
 
-  function fetchUpcomingLeave(url, key, days) {
-    const id = `${url}|${key}|${days}`;
+  // Only leave of the viewer's domain (team members have a domain in the Leave Tracker).
+  // If the Leave Tracker database hasn't got the domain column yet, falls back to everyone.
+  function fetchUpcomingLeave(url, key, days, domain) {
+    const id = `${url}|${key}|${days}|${domain}`;
     const hit = leaveCache.get(id);
     if (hit && Date.now() - hit.at < 60000) return hit.promise;
 
     const today = new Date(), until = new Date();
     until.setDate(until.getDate() + days);
-    const query = new URLSearchParams({
-      select: 'id,start_date,end_date,number_of_days,profiles!employee_id(full_name),leave_types!leave_type_id(name,color)',
-      order: 'start_date'
-    });
-    query.append('start_date', `gt.${isoDate(today)}`);
-    query.append('start_date', `lte.${isoDate(until)}`);
-    const promise = fetch(`${url.replace(/\/+$/, '')}/rest/v1/leave_records?${query}`, {
-      headers: { apikey: key, Authorization: `Bearer ${key}` }
-    }).then(res => {
+    const request = (byDomain) => {
+      const query = new URLSearchParams({
+        select: `id,start_date,end_date,number_of_days,profiles!employee_id${byDomain ? '!inner' : ''}(full_name${byDomain ? ',domain' : ''}),leave_types!leave_type_id(name,color)`,
+        order: 'start_date'
+      });
+      query.append('start_date', `gt.${isoDate(today)}`);
+      query.append('start_date', `lte.${isoDate(until)}`);
+      if (byDomain) query.append('profiles.domain', `eq.${domain}`);
+      return fetch(`${url.replace(/\/+$/, '')}/rest/v1/leave_records?${query}`, {
+        headers: { apikey: key, Authorization: `Bearer ${key}` }
+      });
+    };
+    const promise = request(true).then(async res => {
+      if (!res.ok && /domain/i.test(await res.clone().text())) res = await request(false); // column not added yet
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return res.json();
     });
@@ -253,7 +287,7 @@ const PH = (() => {
     }
     const days = Math.max(1, Number(p.feedDays) || 30), max = Math.max(1, Number(p.feedMax) || 5);
 
-    fetchUpcomingLeave(url, key, days).then(records => {
+    fetchUpcomingLeave(url, key, days, p.__domain || userDomain(getSession())).then(records => {
       if (!records.length) {
         box.replaceChildren(el('div', { class: 'w-leave-msg', text: `No leave scheduled in the next ${days} days.` }));
         return;
@@ -523,8 +557,9 @@ const PH = (() => {
           card.setAttribute('role', 'link');
           const go = (e) => {
             if (card.closest('.canvas') || e.target.closest('a')) return;
-            if (/^https?:/i.test(href) && (e.ctrlKey || e.metaKey)) window.open(href, '_blank', 'noopener');
-            else location.href = href;
+            const target = ssoUrl(href); // signs you in to other modules (VA Tracker, Leave Tracker, …)
+            if (/^https?:/i.test(href) && (e.ctrlKey || e.metaKey)) window.open(target, '_blank', 'noopener');
+            else location.href = target;
           };
           card.addEventListener('click', go);
           card.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(e); });
@@ -663,6 +698,7 @@ const PH = (() => {
     const blocks = (session ? layout.blocks.filter(b => blockVisible(b, session)) : layout.blocks)
       .map(b => withDomain(fillTokens(b, vars), domain));
     container.replaceChildren(...blocks.map(b => renderBlock(b, layout.theme)));
+    if (session) decorateSso(container);
     if (session && !blocks.length) {
       container.replaceChildren(el('div', { class: 'w-empty', style: { gridColumn: 'span 12' },
         text: `Nothing has been set up for the ${userDomain(session)} domain yet.` }));
@@ -674,7 +710,7 @@ const PH = (() => {
     getUsers, getPublishedUsers, getLayout, getPublishedLayout, reconcileDrafts, draftState,
     getSession, setSession, clearSession, isAdmin, requireLogin, requireAdmin, ROLES, can, approvalsDb, jwtRole,
     DEFAULT_DOMAIN, userDomain, inDomain, blockVisible, domainList, refreshSession, requireDomain, pageDomains, allowedIn, submittedInDomain,
-    dashboardName, tokenVars, fillTokens, withDomain, vaPath,
+    dashboardName, tokenVars, fillTokens, withDomain, vaPath, ssoUrl, isModuleUrl,
     uid, clone, el, WIDGETS, THEME_FIELDS, applyTheme, renderBlock, renderPage, setColorMode
   };
 })();
