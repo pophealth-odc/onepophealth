@@ -13,7 +13,7 @@
     })();
   </script>
   <title>Admin Dashboard</title>
-  <link rel="stylesheet" href="css/style.css?v=20">
+  <link rel="stylesheet" href="css/style.css?v=21">
 </head>
 <body class="admin">
   <div class="admin-top">
@@ -99,6 +99,12 @@
         (set per block in the Page designer under <b>Visible to domains</b>).
       </p>
       <div class="domain-list" id="domainList"></div>
+      <h3 class="sub-head">Dashboard name</h3>
+      <p class="muted">
+        Type <code>{dashboard}</code> in any block text or the site title (Page designer) and each user sees their
+        domain's name, e.g. "Welcome to {dashboard} Dashboard". <code>{domain}</code> shows the domain itself.
+      </p>
+      <div class="row" id="dashboardNames"></div>
       <h3 class="sub-head">Who can use the templates</h3>
       <p class="muted">Emergency Change, Pre-Approved Change and Approvals. None ticked = every domain.</p>
       <div class="domain-checks" id="templateDomains"></div>
@@ -228,7 +234,7 @@ grant usage on all sequences in schema public to anon;</pre>
 
   <div class="toast" id="toast"></div>
 
-  <script src="js/common.js?v=8"></script>
-  <script src="js/admin.js?v=11"></script>
+  <script src="js/common.js?v=9"></script>
+  <script src="js/admin.js?v=12"></script>
 </body>
 </html>

@@ -91,15 +91,17 @@
 
   function renderCanvas() {
     PH.applyTheme(state.layout.theme, $('canvasFrame'));
-    $('canvasTitle').textContent = state.layout.theme.siteTitle;
+    const preview = $('domainPreview').value; // '' = show every block
+    // {dashboard} / {domain} placeholders show the previewed domain (default domain when showing all).
+    const vars = PH.tokenVars(state.layout, preview || PH.DEFAULT_DOMAIN);
+    $('canvasTitle').textContent = PH.fillTokens(state.layout.theme.siteTitle, vars);
 
     if (!state.layout.blocks.length) {
       canvas.replaceChildren(el('div', { class: 'canvas-empty', text: 'Drag blocks here to build the main page' }));
       return;
     }
-    const preview = $('domainPreview').value; // '' = show every block
     canvas.replaceChildren(...state.layout.blocks.map((block, i) => {
-      const node = PH.renderBlock(block, state.layout.theme);
+      const node = PH.renderBlock(PH.fillTokens(block, vars), state.layout.theme);
       node.draggable = true;
       if (block.id === state.selectedId) node.classList.add('selected');
       if (preview && !PH.blockVisible(block, { domain: preview })) node.classList.add('other-domain');
@@ -412,6 +414,20 @@
       return chip;
     }));
     $('newDomain').replaceChildren(...list.map(d => el('option', { text: d })));
+
+    // Dashboard name per domain — fills the {dashboard} placeholder in block text and the site title.
+    $('dashboardNames').replaceChildren(...list.map(d => {
+      const input = el('input', { placeholder: d });
+      input.value = (state.layout.settings.dashboardNames || {})[d] || '';
+      input.oninput = () => {
+        const names = { ...(state.layout.settings.dashboardNames || {}) };
+        if (input.value.trim()) names[d] = input.value.trim(); else delete names[d];
+        state.layout.settings.dashboardNames = names;
+        saveLayout();
+        renderCanvas();
+      };
+      return el('div', { class: 'field dash-name' }, [el('label', { text: d }), input]);
+    }));
 
     // Which domains can use the change templates (Emergency / Pre-Approved Change and Approvals).
     const allowed = new Set(PH.pageDomains(state.layout, 'templates'));

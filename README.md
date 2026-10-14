@@ -57,7 +57,7 @@ GitHub Pages lets browsers cache files for 10 minutes. When you change any file 
 
 ## Domains
 
-Each user has a **domain** (Admin Dashboard → Users), and admins can add domains there. Dashboard blocks have **Visible to domains** in the Page designer; with none ticked, a block shows for every domain. All the current blocks are for **Population Health** only. Which domains can use the **templates** (Emergency Change, Pre-Approved Change and Approvals) is set in **Users → Domains → Who can use the templates**; the default is Population Health. Use **Preview as domain** in the designer to see what a domain sees.
+Each user has a **domain** (Admin Dashboard → Users), and admins can add domains there. Dashboard blocks have **Visible to domains** in the Page designer; with none ticked, a block shows for every domain. All the current blocks are for **Population Health** only. Which domains can use the **templates** (Emergency Change, Pre-Approved Change and Approvals) is set in **Users → Domains → Who can use the templates**; the default is Population Health. Use **Preview as domain** in the designer to see what a domain sees. Type `{dashboard}` in any block text or the site title to show each domain's **Dashboard name** (Users → Domains), e.g. "Welcome to {dashboard} Dashboard" → "Welcome to OnePopHealth Dashboard" / "Welcome to OneOperations Dashboard". `{domain}` shows the domain itself.
 
 ## Change request approvals
 

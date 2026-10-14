@@ -13,7 +13,7 @@
     })();
   </script>
   <title>Login</title>
-  <link rel="stylesheet" href="css/style.css?v=20">
+  <link rel="stylesheet" href="css/style.css?v=21">
 </head>
 <body>
   <button class="btn theme-toggle login-theme" type="button" data-theme-toggle>🌙 Dark</button>
@@ -28,7 +28,7 @@
     </form>
   </div>
 
-  <script src="js/common.js?v=8"></script>
+  <script src="js/common.js?v=9"></script>
   <script>
     (async () => {
       if (PH.getSession()) { location.replace('main.html'); return; }
@@ -36,7 +36,9 @@
       try {
         const layout = await PH.getLayout();
         PH.applyTheme(layout.theme);
-        document.getElementById('siteTitle').textContent = layout.theme.siteTitle || 'Sign in';
+        // Before sign-in the domain isn't known, so placeholders show the default domain.
+        document.getElementById('siteTitle').textContent =
+          PH.fillTokens(layout.theme.siteTitle || 'Sign in', PH.tokenVars(layout, PH.DEFAULT_DOMAIN));
       } catch { /* theme is optional on the login page */ }
 
       const form = document.getElementById('loginForm');

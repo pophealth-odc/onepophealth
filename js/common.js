@@ -71,6 +71,16 @@ const PH = (() => {
     const d = block.props && block.props.domains;
     return !Array.isArray(d) || !d.length || d.some(x => inDomain(session, x));
   }
+  // Placeholders usable in any block text and the site title: {dashboard} → the domain's dashboard name
+  // (Admin → Users → Domains, e.g. "OnePopHealth"), {domain} → the domain itself.
+  const dashboardName = (layout, domain) => (layout.settings && layout.settings.dashboardNames && layout.settings.dashboardNames[domain]) || domain;
+  const tokenVars = (layout, domain) => ({ dashboard: dashboardName(layout, domain), domain });
+  function fillTokens(value, vars) {
+    if (typeof value === 'string') return value.replace(/\{(dashboard|domain)\}/g, (m, k) => vars[k] ?? m);
+    if (Array.isArray(value)) return value.map(v => fillTokens(v, vars));
+    if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, fillTokens(v, vars)]));
+    return value;
+  }
   const domainList = (layout) => (layout.settings && layout.settings.domains && layout.settings.domains.length)
     ? layout.settings.domains : [DEFAULT_DOMAIN];
 
@@ -637,7 +647,8 @@ const PH = (() => {
 
   // With a session, only the blocks for that user's domain are shown.
   function renderPage(layout, container, session) {
-    const blocks = session ? layout.blocks.filter(b => blockVisible(b, session)) : layout.blocks;
+    const vars = tokenVars(layout, userDomain(session));
+    const blocks = (session ? layout.blocks.filter(b => blockVisible(b, session)) : layout.blocks).map(b => fillTokens(b, vars));
     container.replaceChildren(...blocks.map(b => renderBlock(b, layout.theme)));
     if (session && !blocks.length) {
       container.replaceChildren(el('div', { class: 'w-empty', style: { gridColumn: 'span 12' },
@@ -650,6 +661,7 @@ const PH = (() => {
     getUsers, getPublishedUsers, getLayout, getPublishedLayout, reconcileDrafts, draftState,
     getSession, setSession, clearSession, isAdmin, requireLogin, requireAdmin, ROLES, can, approvalsDb, jwtRole,
     DEFAULT_DOMAIN, userDomain, inDomain, blockVisible, domainList, refreshSession, requireDomain, pageDomains, allowedIn, submittedInDomain,
+    dashboardName, tokenVars, fillTokens,
     uid, clone, el, WIDGETS, THEME_FIELDS, applyTheme, renderBlock, renderPage, setColorMode
   };
 })();

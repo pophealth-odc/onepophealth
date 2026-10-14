@@ -13,7 +13,7 @@
     })();
   </script>
   <title>Home</title>
-  <link rel="stylesheet" href="css/style.css?v=20">
+  <link rel="stylesheet" href="css/style.css?v=21">
 </head>
 <body>
   <header class="site-header">
@@ -33,7 +33,7 @@
     <div class="page-grid" id="page"></div>
   </main>
 
-  <script src="js/common.js?v=8"></script>
+  <script src="js/common.js?v=9"></script>
   <script>
     (async () => {
       if (!PH.requireLogin()) return;
@@ -60,8 +60,9 @@
         await PH.reconcileDrafts();
         const layout = await PH.getLayout();
         PH.applyTheme(layout.theme);
-        document.title = layout.theme.siteTitle || 'Home';
-        document.getElementById('siteTitle').textContent = layout.theme.siteTitle;
+        const siteTitle = PH.fillTokens(layout.theme.siteTitle || '', PH.tokenVars(layout, PH.userDomain(session)));
+        document.title = siteTitle || 'Home';
+        document.getElementById('siteTitle').textContent = siteTitle;
         const banner = document.getElementById('draftBanner');
         const draft = PH.draftState();
         banner.hidden = draft === 'none';

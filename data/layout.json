@@ -1,6 +1,6 @@
 {
   "theme": {
-    "siteTitle": "Population Health",
+    "siteTitle": "{domain}",
     "background": "#f5f7fb",
     "text": "#1f2937",
     "accent": "#2563eb",
@@ -18,7 +18,7 @@
           "Population Health",
           "Operations"
         ],
-        "title": "Welcome to OneOperations Dashboard",
+        "title": "Welcome to {dashboard} Dashboard",
         "subtitle": "",
         "background": "#2563eb",
         "color": "#ffffff",
@@ -240,6 +240,10 @@
     }
   ],
   "settings": {
+    "dashboardNames": {
+      "Population Health": "OnePopHealth",
+      "Operations": "OneOperations"
+    },
     "domains": [
       "Population Health",
       "Operations"
