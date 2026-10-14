@@ -14,7 +14,9 @@
       "id": "b1",
       "type": "hero",
       "props": {
-        "domains": ["Population Health"],
+        "domains": [
+          "Population Health"
+        ],
         "title": "Welcome to OnePopHealth Dashboard",
         "subtitle": "",
         "background": "#2563eb",
@@ -30,7 +32,9 @@
       "id": "bva01",
       "type": "vaSummary",
       "props": {
-        "domains": ["Population Health"],
+        "domains": [
+          "Population Health"
+        ],
         "title": "Population Health VA Status",
         "trackerUrl": "https://kailknight.github.io/VATracker/",
         "showNoStrategy": true,
@@ -45,7 +49,9 @@
       "id": "b08v27lg",
       "type": "heading",
       "props": {
-        "domains": ["Population Health"],
+        "domains": [
+          "Population Health"
+        ],
         "text": "Tools",
         "level": "h2",
         "align": "center",
@@ -58,7 +64,9 @@
       "id": "b5q7bdhv",
       "type": "divider",
       "props": {
-        "domains": ["Population Health"],
+        "domains": [
+          "Population Health"
+        ],
         "color": "#d1d5db",
         "thickness": 1,
         "width": 12,
@@ -69,7 +77,9 @@
       "id": "b3",
       "type": "card",
       "props": {
-        "domains": ["Population Health"],
+        "domains": [
+          "Population Health"
+        ],
         "title": "Leave Tracker",
         "body": "Leaves and OILs",
         "image": "",
@@ -90,7 +100,9 @@
       "id": "bd1wt6de",
       "type": "card",
       "props": {
-        "domains": ["Population Health"],
+        "domains": [
+          "Population Health"
+        ],
         "title": "Tool",
         "body": "All you need is here",
         "image": "",
@@ -127,7 +139,9 @@
       "id": "by7ateep",
       "type": "card",
       "props": {
-        "domains": ["Population Health"],
+        "domains": [
+          "Population Health"
+        ],
         "title": "Ticketing",
         "body": "Card description",
         "items": [
@@ -157,7 +171,9 @@
       "id": "by33klm2",
       "type": "heading",
       "props": {
-        "domains": ["Population Health"],
+        "domains": [
+          "Population Health"
+        ],
         "text": "Email Template",
         "level": "h2",
         "align": "center",
@@ -170,7 +186,9 @@
       "id": "b9ioxtpk",
       "type": "divider",
       "props": {
-        "domains": ["Population Health"],
+        "domains": [
+          "Population Health"
+        ],
         "color": "#d1d5db",
         "thickness": 1,
         "width": 12,
@@ -181,7 +199,9 @@
       "id": "b6",
       "type": "card",
       "props": {
-        "domains": ["Population Health"],
+        "domains": [
+          "Population Health"
+        ],
         "title": "Pre-Approved Change",
         "body": "Fill in a pre-approved CR and generate the approval email for Outlook.",
         "image": "",
@@ -196,7 +216,9 @@
       "id": "b5",
       "type": "card",
       "props": {
-        "domains": ["Population Health"],
+        "domains": [
+          "Population Health"
+        ],
         "title": "Emergency Change",
         "body": "Fill in an ECR and generate the approval email for Outlook.",
         "image": "",
@@ -209,7 +231,10 @@
     }
   ],
   "settings": {
-    "domains": ["Population Health"],
+    "domains": [
+      "Population Health",
+      "Operations"
+    ],
     "approvals": {
       "url": "https://vawcsvpvwepkogkfluda.supabase.co",
       "anonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZhd2NzdnB2d2Vwa29na2ZsdWRhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA3MzQ0OTUsImV4cCI6MjEwNjMxMDQ5NX0.eNrehZgJB_2FSn4sFi5PtS9YpKkw9LKfbqraYC6c_6k"
