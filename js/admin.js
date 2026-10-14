@@ -101,7 +101,7 @@
       return;
     }
     canvas.replaceChildren(...state.layout.blocks.map((block, i) => {
-      const node = PH.renderBlock(PH.fillTokens(block, vars), state.layout.theme);
+      const node = PH.renderBlock(PH.withDomain(PH.fillTokens(block, vars), preview || PH.DEFAULT_DOMAIN), state.layout.theme);
       node.draggable = true;
       if (block.id === state.selectedId) node.classList.add('selected');
       if (preview && !PH.blockVisible(block, { domain: preview })) node.classList.add('other-domain');
@@ -414,6 +414,7 @@
       return chip;
     }));
     $('newDomain').replaceChildren(...list.map(d => el('option', { text: d })));
+    renderVaDomains();
 
     // Dashboard name per domain — fills the {dashboard} placeholder in block text and the site title.
     $('dashboardNames').replaceChildren(...list.map(d => {
@@ -598,7 +599,8 @@
   // ---------- VA (paste from Excel or upload CSV → data/va.json) ----------
   // Built for large sheets (tens of MB): pasted text never goes into the textarea, the preview shows only
   // the first rows, rows are stored as arrays (column names once), and saving uses the Git Data API (≤100 MB).
-  const VA_PATH = 'data/va.json';
+  const vaDomain = () => $('vaDomain').value || PH.DEFAULT_DOMAIN;
+  const VA_PATH = () => PH.vaPath(vaDomain()); // data/va.json for Population Health, data/va-<domain>.json for others
   const VA_PREVIEW_ROWS = 100;
   const GITHUB_MAX_BYTES = 100 * 1024 * 1024;
   let vaData = null;    // { updatedAt, updatedBy, columns, rows: [[...], ...] }
@@ -812,13 +814,15 @@
       vaStatus(`✖ The JSON is ${fmtBytes(blob.size)}; GitHub allows at most 100 MB per file. Remove unneeded columns/rows in Excel and try again.`);
       return;
     }
+    const domain = vaDomain(), path = VA_PATH();
+    if (!confirm(`Save this VA data for ${domain}? It replaces the current ${domain} VA data (${path}).`)) return;
     $('vaSaveBtn').disabled = true;
     try {
-      await commitLargeFile(cfg, VA_PATH, blob, `Update ${VA_PATH} via admin dashboard (${session.username})`);
+      await commitLargeFile(cfg, path, blob, `Update ${path} (${domain} VA) via admin dashboard (${session.username})`);
       vaPending = false; // the next paste starts a new data set
       $('vaResetBtn').hidden = true;
-      vaStatus(`✔ Saved ${fmtBytes(blob.size)} to ${VA_PATH}: ${describeVa(vaData)}.`);
-      toast('VA saved');
+      vaStatus(`✔ Saved ${fmtBytes(blob.size)} for ${domain} (${path}): ${describeVa(vaData)}.`);
+      toast(`VA saved for ${domain}`);
     } catch (err) {
       vaStatus('✖ Save failed: ' + err.message);
     } finally {
@@ -832,19 +836,42 @@
     URL.revokeObjectURL(a.href);
   };
 
-  // Load the saved file only when the VA tab is opened (it can be large).
-  document.querySelector('.tab[data-view="va"]').addEventListener('click', () => {
-    if (vaLoaded) return;
+  // Load the saved file for the chosen domain (only when the VA tab is opened — it can be large).
+  function loadSavedVa() {
     vaLoaded = true;
-    vaStatus('Loading saved VA data…');
-    PH.fetchJSON(VA_PATH).then(d => {
-      if (vaPending) return; // don't replace rows the user has already pasted
+    const domain = vaDomain();
+    vaStatus(`Loading saved VA data for ${domain}…`);
+    PH.fetchJSON(VA_PATH()).then(d => {
+      if (vaPending || domain !== vaDomain()) return; // don't replace pasted rows / a newer domain choice
       vaData = normalizeVa(d);
       renderVaTable(vaData);
       const when = d.updatedAt ? ` · last saved ${new Date(d.updatedAt).toLocaleString()}${d.updatedBy ? ' by ' + d.updatedBy : ''}` : '';
-      vaStatus(`Current: ${describeVa(vaData)}${when}`);
-    }).catch(() => vaStatus('Nothing saved yet.'));
-  });
+      vaStatus(`${domain} — current: ${describeVa(vaData)}${when}`);
+    }).catch(() => { if (domain === vaDomain()) { vaData = null; renderVaTable(null); vaStatus(`Nothing saved for ${domain} yet.`); } });
+  }
+  document.querySelector('.tab[data-view="va"]').addEventListener('click', () => { if (!vaLoaded) loadSavedVa(); });
+
+  // Domain switch: which domain's VA data is pasted / saved (each has its own file).
+  function renderVaDomains() {
+    const current = $('vaDomain').value || PH.DEFAULT_DOMAIN;
+    const list = PH.domainList(state.layout);
+    $('vaDomain').replaceChildren(...list.map(d => el('option', { text: d })));
+    $('vaDomain').value = list.includes(current) ? current : PH.DEFAULT_DOMAIN;
+    $('vaFileName').textContent = VA_PATH();
+  }
+  $('vaDomain').onchange = () => {
+    if (vaPending && !confirm('Switch domain and discard the rows you pasted but haven\'t saved?')) {
+      $('vaDomain').value = $('vaDomain').dataset.last || PH.DEFAULT_DOMAIN;
+      return;
+    }
+    $('vaDomain').dataset.last = $('vaDomain').value;
+    vaPending = false;
+    vaHeadRaw = '';
+    $('vaResetBtn').hidden = true;
+    $('vaFileName').textContent = VA_PATH();
+    loadSavedVa();
+  };
+  renderVaDomains();
 
   $('exportLayoutBtn').onclick = () => download('layout.json', state.layout);
   $('exportUsersBtn').onclick = () => download('users.json', state.users);

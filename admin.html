@@ -13,7 +13,7 @@
     })();
   </script>
   <title>Admin Dashboard</title>
-  <link rel="stylesheet" href="css/style.css?v=21">
+  <link rel="stylesheet" href="css/style.css?v=22">
 </head>
 <body class="admin">
   <div class="admin-top">
@@ -173,11 +173,16 @@ grant usage on all sequences in schema public to anon;</pre>
   <section class="view page-view" id="view-va">
     <div class="box va-box">
       <h2>VA</h2>
+      <div class="va-domain">
+        <label for="vaDomain">Domain</label>
+        <select id="vaDomain"></select>
+        <span class="muted">Saves to <code id="vaFileName"></code> — each domain has its own VA data and VA Tracker view.</span>
+      </div>
       <ol class="muted va-steps">
         <li>In Excel, select the cells <b>including the header row</b> and copy (Ctrl+C).</li>
         <li>Click <b>Paste from clipboard</b> (recommended for big ranges), or click the box and press Ctrl+V.</li>
         <li>Big sheet? Copy it in <b>batches</b> (e.g. 5,000 rows at a time) — each paste <b>adds</b> rows; a repeated header row is skipped.</li>
-        <li>Click <b>Save</b> to write <code>data/va.json</code> to the repository (uses the token from the Publish tab; max 100 MB).</li>
+        <li>Click <b>Save</b> to write it for the selected domain (uses the token from the Publish tab; max 100 MB).</li>
       </ol>
       <div class="props-actions">
         <button class="btn btn-primary" id="vaClipboardBtn">Paste from clipboard</button>
@@ -234,7 +239,7 @@ grant usage on all sequences in schema public to anon;</pre>
 
   <div class="toast" id="toast"></div>
 
-  <script src="js/common.js?v=9"></script>
-  <script src="js/admin.js?v=12"></script>
+  <script src="js/common.js?v=10"></script>
+  <script src="js/admin.js?v=13"></script>
 </body>
 </html>

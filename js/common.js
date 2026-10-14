@@ -75,6 +75,8 @@ const PH = (() => {
   // (Admin → Users → Domains, e.g. "OnePopHealth"), {domain} → the domain itself.
   const dashboardName = (layout, domain) => (layout.settings && layout.settings.dashboardNames && layout.settings.dashboardNames[domain]) || domain;
   const tokenVars = (layout, domain) => ({ dashboard: dashboardName(layout, domain), domain });
+  // Tell domain-aware blocks (VA summary) which domain they're rendered for.
+  const withDomain = (block, domain) => ({ ...block, props: { ...block.props, __domain: domain } });
   function fillTokens(value, vars) {
     if (typeof value === 'string') return value.replace(/\{(dashboard|domain)\}/g, (m, k) => vars[k] ?? m);
     if (Array.isArray(value)) return value.map(v => fillTokens(v, vars));
@@ -299,10 +301,17 @@ const PH = (() => {
 
   // ---------- VA summary (reads data/va.json, links to the VA Tracker) ----------
   // Same rules as the VA Tracker: days left = SLA Deadline − today; breached when negative.
-  let vaPromise = null;
-  function loadVa() {
-    vaPromise = vaPromise || fetchJSON('data/va.json').catch(err => { vaPromise = null; throw err; });
-    return vaPromise;
+  // One VA file per domain: Population Health keeps data/va.json; others use data/va-<domain>.json.
+  // (The VA Tracker site uses the same rule.)
+  function vaPath(domain) {
+    if (!domain || domain.toLowerCase() === DEFAULT_DOMAIN.toLowerCase()) return 'data/va.json';
+    return `data/va-${domain.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}.json`;
+  }
+  const vaPromises = {};
+  function loadVa(domain) {
+    const path = vaPath(domain);
+    vaPromises[path] = vaPromises[path] || fetchJSON(path).catch(err => { delete vaPromises[path]; throw err; });
+    return vaPromises[path];
   }
   function parseDmy(s) {
     const m = String(s || '').trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
@@ -331,12 +340,14 @@ const PH = (() => {
     { key: 'd30', flag: 'showD30', label: '< 30 days', sub: '16–30 days to SLA' }
   ];
   function vaSummary(p) {
-    const base = safeUrl(p.trackerUrl) || '#';
+    // The viewer's domain (renderPage / the designer preview pass it in as __domain).
+    const domain = p.__domain || userDomain(getSession());
+    const base = `${safeUrl(p.trackerUrl) || '#'}#domain=${encodeURIComponent(domain)}`;
     const tiles = VA_TILES.filter(t => p[t.flag] !== false);
     // View-only users see the numbers but can't open the VA Tracker.
     const clickable = can(getSession(), 'vaClick');
     const tile = (t) => clickable
-      ? el('a', { class: `w-va-tile tone-${t.key}`, href: `${base}#open=${t.key}` })
+      ? el('a', { class: `w-va-tile tone-${t.key}`, href: `${base}&open=${t.key}` })
       : el('div', { class: `w-va-tile tone-${t.key} w-va-static`, title: 'View access: details are not available' });
     const nums = {};
     const box = el('div', { class: 'w-va' }, [
@@ -356,13 +367,13 @@ const PH = (() => {
       }))
     ]);
     const meta = box.querySelector('.w-va-meta');
-    loadVa().then(data => {
+    loadVa(domain).then(data => {
       const c = vaCounts(data);
       for (const t of tiles) nums[t.key].textContent = c[t.key].toLocaleString();
       const when = data.updatedAt ? new Date(data.updatedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
       meta.textContent = `${c.total.toLocaleString()} findings${when ? ' · data from ' + when : ''}`;
     }).catch(() => {
-      meta.textContent = 'No VA data yet — upload it in Admin Dashboard → VA.';
+      meta.textContent = `No VA data for ${domain} yet — upload it in Admin Dashboard → VA.`;
       for (const t of tiles) nums[t.key].textContent = '–';
     });
     return box;
@@ -647,8 +658,10 @@ const PH = (() => {
 
   // With a session, only the blocks for that user's domain are shown.
   function renderPage(layout, container, session) {
-    const vars = tokenVars(layout, userDomain(session));
-    const blocks = (session ? layout.blocks.filter(b => blockVisible(b, session)) : layout.blocks).map(b => fillTokens(b, vars));
+    const domain = userDomain(session);
+    const vars = tokenVars(layout, domain);
+    const blocks = (session ? layout.blocks.filter(b => blockVisible(b, session)) : layout.blocks)
+      .map(b => withDomain(fillTokens(b, vars), domain));
     container.replaceChildren(...blocks.map(b => renderBlock(b, layout.theme)));
     if (session && !blocks.length) {
       container.replaceChildren(el('div', { class: 'w-empty', style: { gridColumn: 'span 12' },
@@ -661,7 +674,7 @@ const PH = (() => {
     getUsers, getPublishedUsers, getLayout, getPublishedLayout, reconcileDrafts, draftState,
     getSession, setSession, clearSession, isAdmin, requireLogin, requireAdmin, ROLES, can, approvalsDb, jwtRole,
     DEFAULT_DOMAIN, userDomain, inDomain, blockVisible, domainList, refreshSession, requireDomain, pageDomains, allowedIn, submittedInDomain,
-    dashboardName, tokenVars, fillTokens,
+    dashboardName, tokenVars, fillTokens, withDomain, vaPath,
     uid, clone, el, WIDGETS, THEME_FIELDS, applyTheme, renderBlock, renderPage, setColorMode
   };
 })();
