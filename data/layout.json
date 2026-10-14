@@ -15,9 +15,10 @@
       "type": "hero",
       "props": {
         "domains": [
-          "Population Health"
+          "Population Health",
+          "Operations"
         ],
-        "title": "Welcome to OnePopHealth Dashboard",
+        "title": "Welcome to OneOperations Dashboard",
         "subtitle": "",
         "background": "#2563eb",
         "color": "#ffffff",
@@ -50,7 +51,8 @@
       "type": "heading",
       "props": {
         "domains": [
-          "Population Health"
+          "Population Health",
+          "Operations"
         ],
         "text": "Tools",
         "level": "h2",
@@ -65,7 +67,8 @@
       "type": "divider",
       "props": {
         "domains": [
-          "Population Health"
+          "Population Health",
+          "Operations"
         ],
         "color": "#d1d5db",
         "thickness": 1,
@@ -101,7 +104,8 @@
       "type": "card",
       "props": {
         "domains": [
-          "Population Health"
+          "Population Health",
+          "Operations"
         ],
         "title": "Tool",
         "body": "All you need is here",
@@ -140,7 +144,8 @@
       "type": "card",
       "props": {
         "domains": [
-          "Population Health"
+          "Population Health",
+          "Operations"
         ],
         "title": "Ticketing",
         "body": "Card description",
@@ -172,7 +177,8 @@
       "type": "heading",
       "props": {
         "domains": [
-          "Population Health"
+          "Population Health",
+          "Operations"
         ],
         "text": "Email Template",
         "level": "h2",
@@ -200,7 +206,8 @@
       "type": "card",
       "props": {
         "domains": [
-          "Population Health"
+          "Population Health",
+          "Operations"
         ],
         "title": "Pre-Approved Change",
         "body": "Fill in a pre-approved CR and generate the approval email for Outlook.",
@@ -217,7 +224,8 @@
       "type": "card",
       "props": {
         "domains": [
-          "Population Health"
+          "Population Health",
+          "Operations"
         ],
         "title": "Emergency Change",
         "body": "Fill in an ECR and generate the approval email for Outlook.",
