@@ -63,6 +63,8 @@ Each user has a **domain** (Admin Dashboard → Users), and admins can add domai
 
 The Emergency and Pre-Approved Change pages **submit** the email for approval. An Approver reviews it on **Approvals**, and once it's approved the submitter can **Copy email** / **Copy subject** under **My requests**. Approvers can't approve their own requests.
 
+Approvers only see requests from users in **their own domain** (e.g. an Operation Approver sees only Operation users' requests). Admins see all domains and can filter by domain.
+
 Requests are stored in a Supabase table `change_requests`. One-time setup is in **Admin Dashboard → Users → Approvals storage**: run the SQL shown there, enter the project URL and **anon** key, then Publish.
 
 > Login is username-only, so roles are honour-system: anyone who types an Approver's username, or calls the API with the anon key, can approve. Don't rely on this for formal change control without real authentication.

@@ -13,7 +13,7 @@
     })();
   </script>
   <title>Home</title>
-  <link rel="stylesheet" href="css/style.css?v=19">
+  <link rel="stylesheet" href="css/style.css?v=20">
 </head>
 <body>
   <header class="site-header">
@@ -33,7 +33,7 @@
     <div class="page-grid" id="page"></div>
   </main>
 
-  <script src="js/common.js?v=7"></script>
+  <script src="js/common.js?v=8"></script>
   <script>
     (async () => {
       if (!PH.requireLogin()) return;
@@ -48,7 +48,9 @@
         const btn = document.getElementById('approvalsBtn');
         btn.hidden = false;
         // Show how many requests are waiting (quietly skipped if approvals aren't set up yet).
-        PH.approvalsDb().then(db => db.list('select=id&status=eq.pending')).then(rows => {
+        // Approvers count only their domain's requests; Admins count all.
+        const scope = PH.isAdmin(session) ? Promise.resolve('') : PH.submittedInDomain(PH.userDomain(session));
+        Promise.all([PH.approvalsDb(), scope]).then(([db, q]) => db.list(`select=id&status=eq.pending${q}`)).then(rows => {
           if (rows.length) btn.textContent = `Approvals (${rows.length})`;
         }).catch(() => {});
       }

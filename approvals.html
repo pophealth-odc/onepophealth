@@ -13,7 +13,7 @@
     })();
   </script>
   <title>Approvals</title>
-  <link rel="stylesheet" href="css/style.css?v=19">
+  <link rel="stylesheet" href="css/style.css?v=20">
 </head>
 <body>
   <header class="site-header">
@@ -39,8 +39,10 @@
         <option value="ecr">Emergency Change</option>
         <option value="pac">Pre-Approved Change</option>
       </select>
+      <select id="domainFilter" hidden title="Admins: show requests from one domain"></select>
       <button class="btn btn-sm" id="refreshBtn" type="button">↻ Refresh</button>
       <span class="muted" id="count"></span>
+      <span class="muted" id="scopeNote"></span>
     </div>
     <div class="error" id="error"></div>
     <div class="req-list" id="list"></div>
@@ -48,7 +50,7 @@
 
   <div class="toast" id="toast"></div>
 
-  <script src="js/common.js?v=7"></script>
-  <script src="js/approvals.js?v=3"></script>
+  <script src="js/common.js?v=8"></script>
+  <script src="js/approvals.js?v=5"></script>
 </body>
 </html>

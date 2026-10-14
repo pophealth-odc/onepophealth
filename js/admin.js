@@ -426,7 +426,9 @@
       };
       return el('label', { class: 'domain-check' }, [box, el('span', { text: d })]);
     }));
-    $('domainPreview').replaceChildren(el('option', { value: '', text: 'All blocks' }),
+    const allBlocks = el('option', { text: 'All blocks' });
+    allBlocks.value = ''; // set directly: PH.el skips empty attribute values
+    $('domainPreview').replaceChildren(allBlocks,
       ...list.map(d => el('option', { value: d, text: `As ${d}` })));
   }
   $('addDomainForm').addEventListener('submit', (e) => {

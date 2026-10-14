@@ -15,9 +15,27 @@
   const TYPES = { ecr: 'Emergency Change', pac: 'Pre-Approved Change' };
   let status = 'pending';
 
-  $('userChip').textContent = `${session.username} · ${session.role}`;
-  if (PH.isAdmin(session)) $('adminBtn').hidden = false;
+  const admin = PH.isAdmin(session);
+  $('userChip').textContent = `${session.username} · ${session.role} · ${PH.userDomain(session)}`;
+  if (admin) $('adminBtn').hidden = false;
   $('logoutBtn').onclick = () => { PH.clearSession(); location.href = 'index.html'; };
+
+  // Approvers only see requests from users in their own domain; Admins can pick any domain.
+  const users = await PH.getUsers().catch(() => []);
+  const domainOf = (username) => {
+    const u = users.find(x => x.username.toLowerCase() === String(username).toLowerCase());
+    return u ? PH.userDomain(u) : 'Unknown';
+  };
+  if (admin && layout) {
+    const all = el('option', { text: 'All domains' });
+    all.value = ''; // set directly: PH.el skips empty attribute values
+    $('domainFilter').replaceChildren(all,
+      ...PH.domainList(layout).map(d => el('option', { value: d, text: d })));
+    $('domainFilter').hidden = false;
+    $('domainFilter').onchange = () => load();
+  } else {
+    $('scopeNote').textContent = `Showing requests from ${PH.userDomain(session)} users`;
+  }
 
   let toastTimer;
   function toast(msg) {
@@ -36,7 +54,9 @@
       const db = await PH.approvalsDb();
       const type = $('typeFilter').value;
       const order = status === 'pending' ? 'submitted_at.asc' : 'decided_at.desc';
-      const rows = await db.list(`select=*&status=eq.${status}${type ? '&type=eq.' + type : ''}&order=${order}&limit=100`);
+      const domain = admin ? $('domainFilter').value : PH.userDomain(session);
+      const scope = domain ? await PH.submittedInDomain(domain) : '';
+      const rows = await db.list(`select=*&status=eq.${status}${type ? '&type=eq.' + type : ''}${scope}&order=${order}&limit=100`);
       $('count').textContent = `${rows.length} ${status}`;
       $('list').replaceChildren(...(rows.length ? rows.map(card) : [el('div', { class: 'muted', text: `No ${status} requests.` })]));
     } catch (err) {
@@ -99,6 +119,7 @@
     return el('div', { class: `req-card req-${r.status}` }, [
       el('div', { class: 'req-top' }, [
         el('span', { class: 'req-status', text: TYPES[r.type] || r.type }),
+        el('span', { class: 'req-domain', text: domainOf(r.submitted_by) }),
         el('span', { class: 'req-subject', text: r.subject }),
         toggle
       ]),

@@ -91,6 +91,12 @@ const PH = (() => {
     const list = layout.settings && layout.settings.pageDomains && layout.settings.pageDomains[group];
     return Array.isArray(list) ? list : [DEFAULT_DOMAIN];
   }
+  // Approvals are scoped to the submitter's domain (looked up from users.json, so no extra DB column).
+  // Returns a PostgREST filter for requests submitted by users of `domain`.
+  async function submittedInDomain(domain) {
+    const names = (await getUsers()).filter(u => inDomain(u, domain)).map(u => `"${u.username.replace(/["\\]/g, '')}"`);
+    return `&submitted_by=in.(${encodeURIComponent(names.length ? names.join(',') : '"__none__"')})`;
+  }
   const allowedIn = (session, domains) => !domains.length || domains.some(d => inDomain(session, d));
   function requireDomain(session, domains, container) {
     domains = [].concat(domains);
@@ -643,7 +649,7 @@ const PH = (() => {
     KEYS, readLocal, writeLocal, fetchJSON,
     getUsers, getPublishedUsers, getLayout, getPublishedLayout, reconcileDrafts, draftState,
     getSession, setSession, clearSession, isAdmin, requireLogin, requireAdmin, ROLES, can, approvalsDb, jwtRole,
-    DEFAULT_DOMAIN, userDomain, inDomain, blockVisible, domainList, refreshSession, requireDomain, pageDomains, allowedIn,
+    DEFAULT_DOMAIN, userDomain, inDomain, blockVisible, domainList, refreshSession, requireDomain, pageDomains, allowedIn, submittedInDomain,
     uid, clone, el, WIDGETS, THEME_FIELDS, applyTheme, renderBlock, renderPage, setColorMode
   };
 })();
