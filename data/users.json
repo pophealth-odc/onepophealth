@@ -53,5 +53,10 @@
     "username": "Raffy",
     "role": "Approver",
     "domain": "Operations"
+  },
+  {
+    "username": "jian",
+    "role": "User",
+    "domain": "Operations"
   }
 ]
