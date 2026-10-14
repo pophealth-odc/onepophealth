@@ -19,8 +19,8 @@
         "background": "#2563eb",
         "color": "#ffffff",
         "image": "",
-        "buttonText": "Learn more",
-        "buttonUrl": "#about",
+        "buttonText": "",
+        "buttonUrl": "",
         "width": 12,
         "padding": 0
       }
@@ -126,11 +126,11 @@
         "items": [
           {
             "text": "Jira",
-            "url": ""
+            "url": "https://itsm.hcloud.healthgrp.com.sg/servicedesk/customer/user/login?destination=portals"
           },
           {
             "text": "ServiceNow",
-            "url": ""
+            "url": "https://synapxe.service-now.com/now/nav/ui/classic/params/target/incident_list.do?sysparm_clear_stack%253Dtrue%3D?sysparm_clear_stack%3Dtrue"
           }
         ],
         "image": "",
