@@ -253,6 +253,10 @@
         "Population Health",
         "Operations"
       ]
+    },
+    "dashboardNames": {
+      "Population Health": "Population Heath",
+      "Operations": "Operation"
     }
   }
 }
