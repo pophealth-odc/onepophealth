@@ -85,10 +85,17 @@ const PH = (() => {
     } catch { /* offline / not published yet: keep the current session */ }
     return getSession();
   }
-  // For pages that belong to one domain (e.g. the Population Health change templates).
-  function requireDomain(session, domain, container) {
-    if (inDomain(session, domain)) return true;
-    container.replaceChildren(el('div', { class: 'w-empty', text: `This page is only available to the ${domain} domain (you are in ${userDomain(session)}).` }));
+  // Which domains may use a feature page group, e.g. 'templates' (Emergency / Pre-Approved Change + Approvals).
+  // Set in Admin → Users → Domains (layout.settings.pageDomains); an empty list means every domain.
+  function pageDomains(layout, group) {
+    const list = layout.settings && layout.settings.pageDomains && layout.settings.pageDomains[group];
+    return Array.isArray(list) ? list : [DEFAULT_DOMAIN];
+  }
+  const allowedIn = (session, domains) => !domains.length || domains.some(d => inDomain(session, d));
+  function requireDomain(session, domains, container) {
+    domains = [].concat(domains);
+    if (allowedIn(session, domains)) return true;
+    container.replaceChildren(el('div', { class: 'w-empty', text: `This page is only available to the ${domains.join(' / ')} domain${domains.length > 1 ? 's' : ''} (you are in ${userDomain(session)}).` }));
     return false;
   }
 
@@ -636,7 +643,7 @@ const PH = (() => {
     KEYS, readLocal, writeLocal, fetchJSON,
     getUsers, getPublishedUsers, getLayout, getPublishedLayout, reconcileDrafts, draftState,
     getSession, setSession, clearSession, isAdmin, requireLogin, requireAdmin, ROLES, can, approvalsDb, jwtRole,
-    DEFAULT_DOMAIN, userDomain, inDomain, blockVisible, domainList, refreshSession, requireDomain,
+    DEFAULT_DOMAIN, userDomain, inDomain, blockVisible, domainList, refreshSession, requireDomain, pageDomains, allowedIn,
     uid, clone, el, WIDGETS, THEME_FIELDS, applyTheme, renderBlock, renderPage, setColorMode
   };
 })();

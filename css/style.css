@@ -425,3 +425,4 @@ body.admin { background: var(--ui-bg); font-family: var(--ui-font); color: var(-
 .canvas .ph-block.other-domain { opacity: .28; filter: grayscale(1); }
 .view.page-view { flex-direction: column; } /* stack the boxes on the Users / VA / Publish tabs */
 .page-view .box { width: 100%; }
+.sub-head { margin: 18px 0 2px; font-size: 14px; }

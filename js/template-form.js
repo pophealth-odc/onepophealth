@@ -90,7 +90,11 @@ const PHTemplate = (() => {
 
     // Reload if the user's role or domain changed in Admin → Users since they signed in.
     PH.refreshSession().then(s => { if (s && (s.role !== session.role || s.domain !== session.domain)) location.reload(); });
-    if (!PH.requireDomain(session, cfg.domain || PH.DEFAULT_DOMAIN, $('app'))) return;
+    // Hidden until the domain check (from the published settings) passes.
+    $('app').hidden = true;
+    PH.getLayout().then(layout => PH.requireDomain(session, PH.pageDomains(layout, 'templates'), $('app')))
+      .catch(() => true)
+      .finally(() => { $('app').hidden = false; });
 
     const colors ={ light: '#e9eef7', dark: '#d0dcef', ...cfg.colors };
     const subjectFields = cfg.subjectFields || [];

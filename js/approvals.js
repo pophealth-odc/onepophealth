@@ -1,10 +1,14 @@
 /* Approvals: Approvers (and Admins) review submitted Emergency / Pre-Approved Change emails. */
-(() => {
+(async () => {
   const session = PH.requireLogin();
   if (!session) return;
   if (!PH.can(session, 'approve')) { location.replace('main.html'); return; }
   PH.refreshSession().then(s => { if (s && (s.role !== session.role || s.domain !== session.domain)) location.reload(); });
-  if (!PH.requireDomain(session, PH.DEFAULT_DOMAIN, document.querySelector('main'))) return;
+  const main = document.querySelector('main');
+  main.hidden = true;
+  const layout = await PH.getLayout().catch(() => null);
+  main.hidden = false;
+  if (layout && !PH.requireDomain(session, PH.pageDomains(layout, 'templates'), main)) return;
 
   const $ = (id) => document.getElementById(id);
   const { el } = PH;

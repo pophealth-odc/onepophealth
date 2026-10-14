@@ -13,7 +13,7 @@
     })();
   </script>
   <title>Home</title>
-  <link rel="stylesheet" href="css/style.css?v=18">
+  <link rel="stylesheet" href="css/style.css?v=19">
 </head>
 <body>
   <header class="site-header">
@@ -33,7 +33,7 @@
     <div class="page-grid" id="page"></div>
   </main>
 
-  <script src="js/common.js?v=6"></script>
+  <script src="js/common.js?v=7"></script>
   <script>
     (async () => {
       if (!PH.requireLogin()) return;
@@ -42,8 +42,9 @@
 
       document.getElementById('userChip').textContent = `${session.username} · ${session.role} · ${PH.userDomain(session)}`;
       if (PH.isAdmin(session)) document.getElementById('adminBtn').hidden = false;
-      // Approvals belong to the Population Health change templates.
-      if (PH.can(session, 'approve') && PH.inDomain(session, PH.DEFAULT_DOMAIN)) {
+      // Approvals go with the change templates (domains set in Admin → Users → Domains).
+      const layoutForAccess = await PH.getLayout().catch(() => ({}));
+      if (PH.can(session, 'approve') && PH.allowedIn(session, PH.pageDomains(layoutForAccess, 'templates'))) {
         const btn = document.getElementById('approvalsBtn');
         btn.hidden = false;
         // Show how many requests are waiting (quietly skipped if approvals aren't set up yet).

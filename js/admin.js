@@ -404,12 +404,28 @@
           state.layout.settings.domains = list.filter(x => x !== d);
           // Blocks limited to that domain go back to "all domains" only if nothing else is ticked.
           for (const b of state.layout.blocks) if (Array.isArray(b.props.domains)) b.props.domains = b.props.domains.filter(x => x !== d);
+          const pd = state.layout.settings.pageDomains;
+          if (pd && Array.isArray(pd.templates)) pd.templates = pd.templates.filter(x => x !== d);
           saveLayout(); renderDomains(); renderUsers(); renderProps(); renderCanvas();
         }));
       }
       return chip;
     }));
     $('newDomain').replaceChildren(...list.map(d => el('option', { text: d })));
+
+    // Which domains can use the change templates (Emergency / Pre-Approved Change and Approvals).
+    const allowed = new Set(PH.pageDomains(state.layout, 'templates'));
+    $('templateDomains').replaceChildren(...list.map(d => {
+      const box = el('input', { type: 'checkbox' });
+      box.checked = allowed.has(d);
+      box.onchange = () => {
+        box.checked ? allowed.add(d) : allowed.delete(d);
+        state.layout.settings = state.layout.settings || {};
+        state.layout.settings.pageDomains = { ...(state.layout.settings.pageDomains || {}), templates: list.filter(x => allowed.has(x)) };
+        saveLayout();
+      };
+      return el('label', { class: 'domain-check' }, [box, el('span', { text: d })]);
+    }));
     $('domainPreview').replaceChildren(el('option', { value: '', text: 'All blocks' }),
       ...list.map(d => el('option', { value: d, text: `As ${d}` })));
   }
