@@ -96,19 +96,23 @@
         "items": [
           {
             "text": "Dynatrace",
-            "url": ""
+            "url": "https://safe.menlosecurity.com/https:/aaj23525.live.dynatrace.com/"
           },
           {
             "text": "Fusion",
-            "url": ""
+            "url": "https://fusionportal.synapxe.sg/login"
           },
           {
             "text": "Oneclick",
-            "url": ""
+            "url": "https://oneclick.healthgrp.com.sg/service/api/auth/login"
           },
           {
             "text": "Knowledge Base",
             "url": "https://kailknight.github.io/knowledgebase/"
+          },
+          {
+            "text": "HCloud Portal",
+            "url": "https://autportal.hcloud.healthgrp.com.sg/#/login"
           }
         ]
       }
