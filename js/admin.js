@@ -97,13 +97,17 @@
       canvas.replaceChildren(el('div', { class: 'canvas-empty', text: 'Drag blocks here to build the main page' }));
       return;
     }
+    const preview = $('domainPreview').value; // '' = show every block
     canvas.replaceChildren(...state.layout.blocks.map((block, i) => {
       const node = PH.renderBlock(block, state.layout.theme);
       node.draggable = true;
       if (block.id === state.selectedId) node.classList.add('selected');
+      if (preview && !PH.blockVisible(block, { domain: preview })) node.classList.add('other-domain');
 
+      const doms = block.props.domains || [];
       const tools = el('div', { class: 'block-tools' }, [
         el('span', { class: 'type', text: PH.WIDGETS[block.type]?.label || block.type }),
+        el('span', { class: 'type', title: 'Visible to', text: doms.length ? `🔒 ${doms.join(', ')}` : '🌐 All domains' }),
         toolBtn('↑', 'Move up', () => move(i, i - 1)),
         toolBtn('↓', 'Move down', () => move(i, i + 1)),
         toolBtn('⧉', 'Duplicate', () => duplicate(i)),
@@ -234,6 +238,18 @@
       input = el('input', { id, type: 'number', min: field.min, max: field.max });
       input.value = value ?? '';
       input.oninput = () => { if (input.value !== '') onChange(Number(input.value)); };
+    } else if (field.type === 'domains') {
+      // One checkbox per domain (managed in Users → Domains); none ticked = visible to all domains.
+      const picked = new Set(Array.isArray(value) ? value : []);
+      input = el('div', { class: 'domain-checks', id }, PH.domainList(state.layout).map(d => {
+        const box = el('input', { type: 'checkbox' });
+        box.checked = picked.has(d);
+        box.onchange = () => {
+          box.checked ? picked.add(d) : picked.delete(d);
+          onChange(PH.domainList(state.layout).filter(x => picked.has(x)));
+        };
+        return el('label', { class: 'domain-check' }, [box, el('span', { text: d })]);
+      }));
     } else if (field.type === 'links') {
       // List of { text, url } rows with add / move / remove.
       const items = (Array.isArray(value) ? value : []).map(it => ({ text: it.text || '', url: it.url || '' }));
@@ -355,6 +371,8 @@
         u.role = role.value;
         saveUsers();
       };
+      const domain = domainSelect(u.domain || PH.DEFAULT_DOMAIN);
+      domain.onchange = () => { u.domain = domain.value; saveUsers(); };
       const del = actionBtn('Remove', 'btn-danger', () => {
         if (String(u.role).toLowerCase() === 'admin' && adminCount() === 1) return showUserError('There must be at least one Admin.');
         if (!confirm(`Remove user "${u.username}"?`)) return;
@@ -362,9 +380,52 @@
         saveUsers();
         renderUsers();
       });
-      return el('tr', {}, [el('td', { text: u.username }), el('td', {}, role), el('td', {}, del)]);
+      return el('tr', {}, [el('td', { text: u.username }), el('td', {}, role), el('td', {}, domain), el('td', {}, del)]);
     }));
   }
+  function domainSelect(current) {
+    const list = PH.domainList(state.layout);
+    const options = list.includes(current) ? list : [...list, current]; // keep an unknown value visible
+    const sel = el('select', {}, options.map(d => el('option', { text: d })));
+    sel.value = current;
+    sel.style.width = 'auto';
+    return sel;
+  }
+
+  // ---------- domains ----------
+  function renderDomains() {
+    const list = PH.domainList(state.layout);
+    $('domainList').replaceChildren(...list.map(d => {
+      const count = state.users.filter(u => (u.domain || PH.DEFAULT_DOMAIN) === d).length;
+      const chip = el('span', { class: 'domain-chip' }, [el('span', { text: `${d} (${count} user${count === 1 ? '' : 's'})` })]);
+      if (d !== PH.DEFAULT_DOMAIN) {
+        chip.append(actionBtn('✕', '', () => {
+          if (count) return showUserError(`Move the ${count} user(s) in "${d}" to another domain first.`);
+          state.layout.settings.domains = list.filter(x => x !== d);
+          // Blocks limited to that domain go back to "all domains" only if nothing else is ticked.
+          for (const b of state.layout.blocks) if (Array.isArray(b.props.domains)) b.props.domains = b.props.domains.filter(x => x !== d);
+          saveLayout(); renderDomains(); renderUsers(); renderProps(); renderCanvas();
+        }));
+      }
+      return chip;
+    }));
+    $('newDomain').replaceChildren(...list.map(d => el('option', { text: d })));
+    $('domainPreview').replaceChildren(el('option', { value: '', text: 'All blocks' }),
+      ...list.map(d => el('option', { value: d, text: `As ${d}` })));
+  }
+  $('addDomainForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const name = $('newDomainName').value.trim();
+    if (!name) return;
+    const list = PH.domainList(state.layout);
+    if (list.some(d => d.toLowerCase() === name.toLowerCase())) return showUserError('That domain already exists.');
+    state.layout.settings = state.layout.settings || {};
+    state.layout.settings.domains = [...list, name];
+    $('newDomainName').value = '';
+    saveLayout(); renderDomains(); renderUsers(); renderProps();
+    toast(`Added domain ${name}`);
+  });
+  $('domainPreview').onchange = () => renderCanvas();
   function adminCount() { return state.users.filter(u => String(u.role).toLowerCase() === 'admin').length; }
   function showUserError(msg) { $('userError').textContent = msg; }
 
@@ -376,7 +437,7 @@
     if (state.users.some(u => u.username.toLowerCase() === username.toLowerCase())) {
       return showUserError('That username already exists.');
     }
-    state.users.push({ username, role: $('newRole').value });
+    state.users.push({ username, role: $('newRole').value, domain: $('newDomain').value || PH.DEFAULT_DOMAIN });
     $('newUsername').value = '';
     saveUsers();
     renderUsers();
@@ -765,6 +826,7 @@
       state.selectedId = null;
       saveLayout();
       renderApprSettings();
+      renderDomains();
       renderCanvas();
       renderProps();
       toast('Layout imported');
@@ -782,12 +844,15 @@
     renderCanvas();
     renderProps();
     renderApprSettings();
+    renderDomains();
+    renderCanvas();
     renderUsers();
     updateStatus();
     toast('Drafts discarded');
   };
 
   // ---------- init ----------
+  renderDomains();
   renderCanvas();
   renderProps();
   renderUsers();

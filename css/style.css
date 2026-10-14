@@ -412,3 +412,16 @@ body.admin { background: var(--ui-bg); font-family: var(--ui-font); color: var(-
   content: 'PREVIEW — NOT APPROVED'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
   font: 700 48px var(--ui-font); color: rgba(220, 38, 38, .12); transform: rotate(-18deg); pointer-events: none; letter-spacing: .05em;
 }
+
+/* ---------- domains ---------- */
+.domain-checks { display: flex; flex-direction: column; gap: 4px; }
+.domain-check { display: flex; align-items: center; gap: 8px; margin: 0; font-weight: 400; }
+.domain-check input { width: auto; }
+.domain-list { display: flex; gap: 8px; flex-wrap: wrap; }
+.domain-chip {
+  display: inline-flex; align-items: center; gap: 6px; padding: 4px 6px 4px 12px; border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 12%, var(--ui-surface)); border: 1px solid var(--ui-border); font-size: 13px;
+}
+.canvas .ph-block.other-domain { opacity: .28; filter: grayscale(1); }
+.view.page-view { flex-direction: column; } /* stack the boxes on the Users / VA / Publish tabs */
+.page-view .box { width: 100%; }

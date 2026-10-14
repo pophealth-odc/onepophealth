@@ -56,9 +56,41 @@ const PH = (() => {
 
   // ---------- session ----------
   function getSession() { return readLocal(KEYS.session); }
-  function setSession(user) { writeLocal(KEYS.session, { username: user.username, role: user.role }); }
+  function setSession(user) { writeLocal(KEYS.session, { username: user.username, role: user.role, domain: user.domain || DEFAULT_DOMAIN }); }
   function clearSession() { writeLocal(KEYS.session, null); }
   function isAdmin(session) { return !!session && String(session.role).toLowerCase() === 'admin'; }
+
+  // ---------- domains ----------
+  // Each user belongs to a domain; dashboard blocks and feature pages can be limited to domains.
+  // Users saved before domains existed count as the default domain.
+  const DEFAULT_DOMAIN = 'Population Health';
+  const userDomain = (session) => (session && session.domain) || DEFAULT_DOMAIN;
+  const inDomain = (session, domain) => userDomain(session).toLowerCase() === String(domain).toLowerCase();
+  // A block with no domains ticked is visible to every domain.
+  function blockVisible(block, session) {
+    const d = block.props && block.props.domains;
+    return !Array.isArray(d) || !d.length || d.some(x => inDomain(session, x));
+  }
+  const domainList = (layout) => (layout.settings && layout.settings.domains && layout.settings.domains.length)
+    ? layout.settings.domains : [DEFAULT_DOMAIN];
+
+  // Re-read the signed-in user from users.json so role/domain changes apply without logging out.
+  async function refreshSession() {
+    const s = getSession();
+    if (!s) return null;
+    try {
+      const user = (await getUsers()).find(u => u.username.toLowerCase() === s.username.toLowerCase());
+      if (!user) { clearSession(); location.replace('index.html'); return null; }
+      setSession(user);
+    } catch { /* offline / not published yet: keep the current session */ }
+    return getSession();
+  }
+  // For pages that belong to one domain (e.g. the Population Health change templates).
+  function requireDomain(session, domain, container) {
+    if (inDomain(session, domain)) return true;
+    container.replaceChildren(el('div', { class: 'w-empty', text: `This page is only available to the ${domain} domain (you are in ${userDomain(session)}).` }));
+    return false;
+  }
 
   // Roles: Admin (everything), Approver (VA + approve change requests), User (VA + submit), View (read-only).
   const ROLES = ['User', 'Approver', 'View', 'Admin'];
@@ -319,7 +351,8 @@ const PH = (() => {
       { value: 12, label: 'Full' }, { value: 9, label: '3/4' }, { value: 8, label: '2/3' },
       { value: 6, label: '1/2' }, { value: 4, label: '1/3' }, { value: 3, label: '1/4' }
     ] },
-    { key: 'padding', label: 'Padding (px)', type: 'number', min: 0, max: 200 }
+    { key: 'padding', label: 'Padding (px)', type: 'number', min: 0, max: 200 },
+    { key: 'domains', label: 'Visible to domains (none ticked = all domains)', type: 'domains' }
   ];
   const alignField = { key: 'align', label: 'Align', type: 'select', options: ['left', 'center', 'right'] };
 
@@ -589,14 +622,21 @@ const PH = (() => {
     return wrap;
   }
 
-  function renderPage(layout, container) {
-    container.replaceChildren(...layout.blocks.map(b => renderBlock(b, layout.theme)));
+  // With a session, only the blocks for that user's domain are shown.
+  function renderPage(layout, container, session) {
+    const blocks = session ? layout.blocks.filter(b => blockVisible(b, session)) : layout.blocks;
+    container.replaceChildren(...blocks.map(b => renderBlock(b, layout.theme)));
+    if (session && !blocks.length) {
+      container.replaceChildren(el('div', { class: 'w-empty', style: { gridColumn: 'span 12' },
+        text: `Nothing has been set up for the ${userDomain(session)} domain yet.` }));
+    }
   }
 
   return {
     KEYS, readLocal, writeLocal, fetchJSON,
     getUsers, getPublishedUsers, getLayout, getPublishedLayout, reconcileDrafts, draftState,
     getSession, setSession, clearSession, isAdmin, requireLogin, requireAdmin, ROLES, can, approvalsDb, jwtRole,
+    DEFAULT_DOMAIN, userDomain, inDomain, blockVisible, domainList, refreshSession, requireDomain,
     uid, clone, el, WIDGETS, THEME_FIELDS, applyTheme, renderBlock, renderPage, setColorMode
   };
 })();

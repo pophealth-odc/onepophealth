@@ -88,7 +88,11 @@ const PHTemplate = (() => {
     document.title = cfg.title;
     $('siteTitle').textContent = cfg.shortTitle || cfg.title;
 
-    const colors = { light: '#e9eef7', dark: '#d0dcef', ...cfg.colors };
+    // Reload if the user's role or domain changed in Admin → Users since they signed in.
+    PH.refreshSession().then(s => { if (s && (s.role !== session.role || s.domain !== session.domain)) location.reload(); });
+    if (!PH.requireDomain(session, cfg.domain || PH.DEFAULT_DOMAIN, $('app'))) return;
+
+    const colors ={ light: '#e9eef7', dark: '#d0dcef', ...cfg.colors };
     const subjectFields = cfg.subjectFields || [];
     const introFields = cfg.introFields || [];
     const allFields = [...subjectFields, ...introFields, ...cfg.fields];

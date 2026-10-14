@@ -1,46 +1,57 @@
 [
   {
     "username": "kim",
-    "role": "Admin"
+    "role": "Admin",
+    "domain": "Population Health"
   },
   {
     "username": "dhalia",
-    "role": "Admin"
+    "role": "Admin",
+    "domain": "Population Health"
   },
   {
     "username": "mon",
-    "role": "Admin"
+    "role": "Admin",
+    "domain": "Population Health"
   },
   {
     "username": "jaztyn",
-    "role": "Admin"
+    "role": "Admin",
+    "domain": "Population Health"
   },
   {
     "username": "chris",
-    "role": "User"
+    "role": "User",
+    "domain": "Population Health"
   },
   {
     "username": "ed",
-    "role": "User"
+    "role": "User",
+    "domain": "Population Health"
   },
   {
     "username": "dale",
-    "role": "User"
+    "role": "User",
+    "domain": "Population Health"
   },
   {
     "username": "yves",
-    "role": "User"
+    "role": "User",
+    "domain": "Population Health"
   },
   {
     "username": "david",
-    "role": "User"
+    "role": "User",
+    "domain": "Population Health"
   },
   {
     "username": "ryan",
-    "role": "View"
+    "role": "View",
+    "domain": "Population Health"
   },
   {
     "username": "Raffy",
-    "role": "Admin"
+    "role": "Admin",
+    "domain": "Population Health"
   }
 ]

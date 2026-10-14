@@ -13,7 +13,7 @@
     })();
   </script>
   <title>Home</title>
-  <link rel="stylesheet" href="css/style.css?v=16">
+  <link rel="stylesheet" href="css/style.css?v=18">
 </head>
 <body>
   <header class="site-header">
@@ -33,15 +33,17 @@
     <div class="page-grid" id="page"></div>
   </main>
 
-  <script src="js/common.js?v=5"></script>
+  <script src="js/common.js?v=6"></script>
   <script>
     (async () => {
-      const session = PH.requireLogin();
+      if (!PH.requireLogin()) return;
+      const session = await PH.refreshSession(); // picks up role / domain changes
       if (!session) return;
 
-      document.getElementById('userChip').textContent = `${session.username} · ${session.role}`;
+      document.getElementById('userChip').textContent = `${session.username} · ${session.role} · ${PH.userDomain(session)}`;
       if (PH.isAdmin(session)) document.getElementById('adminBtn').hidden = false;
-      if (PH.can(session, 'approve')) {
+      // Approvals belong to the Population Health change templates.
+      if (PH.can(session, 'approve') && PH.inDomain(session, PH.DEFAULT_DOMAIN)) {
         const btn = document.getElementById('approvalsBtn');
         btn.hidden = false;
         // Show how many requests are waiting (quietly skipped if approvals aren't set up yet).
@@ -63,7 +65,7 @@
         if (draft === 'deploying') {
           banner.textContent = '✔ Published. GitHub Pages is updating (can take a few minutes) — this message disappears once the live site is updated.';
         }
-        PH.renderPage(layout, document.getElementById('page'));
+        PH.renderPage(layout, document.getElementById('page'), session);
       } catch (err) {
         document.getElementById('page').replaceChildren(PH.el('div', { class: 'w-empty', style: { gridColumn: 'span 12' }, text: 'Could not load page: ' + err.message }));
       }

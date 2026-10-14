@@ -53,6 +53,8 @@ GitHub Pages lets browsers cache files for 10 minutes. When you change any file 
 | **User** | Open the VA Tracker; submit Emergency / Pre-Approved Change requests |
 | **View** | Read-only: sees the page and VA numbers, but can't open the VA Tracker or submit |
 
+
+
 ## Change request approvals
 
 The Emergency and Pre-Approved Change pages **submit** the email for approval. An Approver reviews it on **Approvals**, and once it's approved the submitter can **Copy email** / **Copy subject** under **My requests**. Approvers can't approve their own requests.

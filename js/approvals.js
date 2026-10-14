@@ -3,6 +3,8 @@
   const session = PH.requireLogin();
   if (!session) return;
   if (!PH.can(session, 'approve')) { location.replace('main.html'); return; }
+  PH.refreshSession().then(s => { if (s && (s.role !== session.role || s.domain !== session.domain)) location.reload(); });
+  if (!PH.requireDomain(session, PH.DEFAULT_DOMAIN, document.querySelector('main'))) return;
 
   const $ = (id) => document.getElementById(id);
   const { el } = PH;

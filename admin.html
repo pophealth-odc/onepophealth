@@ -13,7 +13,7 @@
     })();
   </script>
   <title>Admin Dashboard</title>
-  <link rel="stylesheet" href="css/style.css?v=16">
+  <link rel="stylesheet" href="css/style.css?v=18">
 </head>
 <body class="admin">
   <div class="admin-top">
@@ -41,6 +41,8 @@
         <h3>Blocks</h3>
         <div id="palette"></div>
         <p class="palette-hint">Drag a block onto the page, or click it to add at the end. Drag blocks on the page to reorder.</p>
+        <h3 style="margin-top:20px">Preview as domain</h3>
+        <select id="domainPreview" title="Fade the blocks a domain can't see"></select>
       </aside>
       <div class="canvas-wrap">
         <div class="canvas-frame" id="canvasFrame">
@@ -78,13 +80,30 @@
         <div class="field"><label>Role</label>
           <select id="newRole"></select>
         </div>
+        <div class="field"><label>Domain</label>
+          <select id="newDomain"></select>
+        </div>
         <button class="btn btn-primary" type="submit">Add user</button>
       </form>
       <div class="error" id="userError"></div>
       <table class="table">
-        <thead><tr><th>Username</th><th>Role</th><th></th></tr></thead>
+        <thead><tr><th>Username</th><th>Role</th><th>Domain</th><th></th></tr></thead>
         <tbody id="userRows"></tbody>
       </table>
+    </div>
+
+    <div class="box">
+      <h2>Domains</h2>
+      <p class="muted">
+        Each user belongs to one domain. Users only see the dashboard blocks for their domain
+        (set per block in the Page designer under <b>Visible to domains</b>). The Emergency Change, Pre-Approved Change
+        and Approvals pages are for <b>Population Health</b> only.
+      </p>
+      <div class="domain-list" id="domainList"></div>
+      <form class="row" id="addDomainForm" style="margin-top:12px">
+        <div class="field"><label for="newDomainName">New domain</label><input id="newDomainName" placeholder="e.g. Primary Care"></div>
+        <button class="btn" type="submit">Add domain</button>
+      </form>
     </div>
 
     <div class="box">
@@ -207,7 +226,7 @@ grant usage on all sequences in schema public to anon;</pre>
 
   <div class="toast" id="toast"></div>
 
-  <script src="js/common.js?v=5"></script>
-  <script src="js/admin.js?v=8"></script>
+  <script src="js/common.js?v=6"></script>
+  <script src="js/admin.js?v=9"></script>
 </body>
 </html>
