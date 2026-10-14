@@ -11,6 +11,24 @@
   },
   "blocks": [
     {
+      "id": "bk9x4n3t",
+      "type": "hero",
+      "props": {
+        "title": "Welcome to OneOperations Dashboard",
+        "subtitle": "",
+        "background": "#2563eb",
+        "color": "#ffffff",
+        "image": "",
+        "buttonText": "",
+        "buttonUrl": "#",
+        "width": 12,
+        "padding": 0,
+        "domains": [
+          "Operations"
+        ]
+      }
+    },
+    {
       "id": "b6kafb4e",
       "type": "hero",
       "props": {
@@ -19,13 +37,12 @@
         "background": "#2563eb",
         "color": "#ffffff",
         "image": "",
-        "buttonText": "Get started",
+        "buttonText": "",
         "buttonUrl": "#",
         "width": 12,
         "padding": 0,
         "domains": [
-          "Population Health",
-          "Operations"
+          "Population Health"
         ]
       }
     },
