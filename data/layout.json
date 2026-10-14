@@ -64,6 +64,23 @@
       }
     },
     {
+      "id": "bovcsr0c",
+      "type": "vaSummary",
+      "props": {
+        "title": "Operations VA Status",
+        "trackerUrl": "https://kailknight.github.io/VATracker/#domain=Operations",
+        "showNoStrategy": true,
+        "showBreach": true,
+        "showD15": true,
+        "showD30": true,
+        "width": 12,
+        "padding": 0,
+        "domains": [
+          "Operations"
+        ]
+      }
+    },
+    {
       "id": "b08v27lg",
       "type": "heading",
       "props": {
