@@ -179,7 +179,7 @@ grant usage on all sequences in schema public to anon;</pre>
         <span class="muted">Saves to <code id="vaFileName"></code> — each domain has its own VA data and VA Tracker view.</span>
       </div>
       <ol class="muted va-steps">
-        <li>In Excel, select the cells <b>including the header row</b> and copy (Ctrl+C).</li>
+        <li>In Excel, select the cells <b>including the header row</b> and copy (Ctrl+C) — or copy a <b>JSON</b> file's contents (e.g. a downloaded <code>va.json</code>).</li>
         <li>Click <b>Paste from clipboard</b> (recommended for big ranges), or click the box and press Ctrl+V.</li>
         <li>Big sheet? Copy it in <b>batches</b> (e.g. 5,000 rows at a time) — each paste <b>adds</b> rows; a repeated header row is skipped.</li>
         <li>Click <b>Save</b> to write it for the selected domain (uses the token from the Publish tab; max 100 MB).</li>
@@ -192,8 +192,8 @@ grant usage on all sequences in schema public to anon;</pre>
       <div class="props-actions">
         <button class="btn btn-primary" id="vaSaveBtn">Save</button>
         <button class="btn" id="vaDownloadBtn">Download JSON</button>
-        <label class="btn" for="vaFile">Choose CSV file…</label>
-        <input type="file" id="vaFile" accept=".csv,.tsv,.txt,text/csv,text/tab-separated-values,text/plain" hidden>
+        <label class="btn" for="vaFile">Choose CSV / JSON file…</label>
+        <input type="file" id="vaFile" accept=".csv,.tsv,.txt,.json,text/csv,text/tab-separated-values,text/plain,application/json" hidden>
       </div>
       <p class="muted" id="vaInfo"></p>
       <div class="va-table-wrap"><table class="table va-table" id="vaTable"></table></div>
@@ -240,6 +240,6 @@ grant usage on all sequences in schema public to anon;</pre>
   <div class="toast" id="toast"></div>
 
   <script src="js/common.js?v=11"></script>
-  <script src="js/admin.js?v=13"></script>
+  <script src="js/admin.js?v=14"></script>
 </body>
 </html>

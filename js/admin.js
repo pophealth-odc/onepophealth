@@ -707,13 +707,42 @@
 
   // The first paste starts a new data set (header row + data); later pastes add rows to it,
   // so a big sheet can be copied in batches. "Start over" begins a new data set.
+  // Pasted / chosen JSON instead of Excel cells → header row + data rows, or null if it isn't JSON.
+  // Accepts this site's VA format { columns, rows }, a list of records [{ col: value }],
+  // or a list of rows [[header…], [values…]].
+  function jsonToVaRows(text) {
+    const t = (text.charCodeAt(0) === 0xFEFF ? text.slice(1) : text).trim(); // drop a byte-order mark
+    if (!/^[[{]/.test(t)) return null;
+    let d;
+    try { d = JSON.parse(t); } catch (err) { throw new Error(`it looks like JSON but isn't valid (${err.message})`); }
+    const str = (v) => v === null || v === undefined ? '' : typeof v === 'object' ? JSON.stringify(v) : String(v).trim();
+    if (d && !Array.isArray(d) && Array.isArray(d.columns) && Array.isArray(d.rows)) {
+      const cols = d.columns.map(str);
+      const rows = d.rows.map(r => Array.isArray(r) ? r.map(str) : cols.map(c => str(r[c])));
+      return [cols, ...rows];
+    }
+    if (Array.isArray(d) && d.length && d.every(r => Array.isArray(r))) return d.map(r => r.map(str));
+    if (Array.isArray(d) && d.length && d.every(r => r && typeof r === 'object')) {
+      const cols = [];
+      for (const r of d) for (const k of Object.keys(r)) if (!cols.includes(k)) cols.push(k);
+      return [cols, ...d.map(r => cols.map(c => str(r[c])))];
+    }
+    throw new Error('JSON must be { "columns": [...], "rows": [...] }, a list of records, or a list of rows');
+  }
+
   async function loadVaText(text, source) {
     if (!text || !text.trim()) { vaStatus('The clipboard has no text — copy the cells in Excel first.'); return; }
     vaStatus(`Reading ${fmtBytes(text.length)} from ${source}…`);
     await nextPaint();
     let added;
     try {
-      const rows = parseRows(text);
+      const json = jsonToVaRows(text);
+      if (json) {
+        // JSON is a complete data set (e.g. a downloaded va.json), so it replaces anything pasted so far.
+        vaPending = false;
+        source = `${source} (JSON)`;
+      }
+      const rows = json || parseRows(text);
       if (vaPending && vaData) {
         added = appendVaRows(rows);
       } else {
@@ -731,7 +760,7 @@
     if (!vaData) { vaStatus('No rows found.'); return; }
     if (!vaData.rows.length) { vaStatus('Only a header row was found — include the data rows too.'); return; }
     const total = `${vaData.rows.length.toLocaleString()} rows × ${vaData.columns.length} columns`;
-    vaStatus(`✔ Pasted successfully: ${added.toLocaleString()} rows added. Total: ${total} — not saved yet. Paste more rows to add them, or click Save.`);
+    vaStatus(`✔ Pasted successfully: ${added.toLocaleString()} row${added === 1 ? '' : 's'} added. Total: ${total} — not saved yet. Paste more rows to add them, or click Save.`);
     toast(`✔ Pasted ${added.toLocaleString()} rows successfully`);
   }
 
