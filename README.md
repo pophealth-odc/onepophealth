@@ -55,6 +55,10 @@ GitHub Pages lets browsers cache files for 10 minutes. When you change any file 
 
 
 
+## Domains
+
+Each user has a **domain** (Admin Dashboard → Users), and admins can add domains there. Dashboard blocks have **Visible to domains** in the Page designer; with none ticked, a block shows for every domain. All the current blocks, plus the Emergency Change, Pre-Approved Change and Approvals pages, are for **Population Health** only. Use **Preview as domain** in the designer to see what a domain sees.
+
 ## Change request approvals
 
 The Emergency and Pre-Approved Change pages **submit** the email for approval. An Approver reviews it on **Approvals**, and once it's approved the submitter can **Copy email** / **Copy subject** under **My requests**. Approvers can't approve their own requests.
