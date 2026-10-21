@@ -309,11 +309,11 @@
       "type": "card",
       "props": {
         "title": "Preventive Monitoring",
-        "body": "Fill in and generate the template.\n",
+        "body": "Fill in and generate the template.\n\n",
         "items": [],
         "image": "",
         "linkText": "Open template",
-        "linkUrl": "",
+        "linkUrl": "https://pophealth-odc.github.io/templategenerator/",
         "background": "#ffffff",
         "feed": "",
         "feedUrl": "",
