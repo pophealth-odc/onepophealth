@@ -275,6 +275,54 @@
         "width": 4,
         "padding": 24
       }
+    },
+    {
+      "id": "br05qxwo",
+      "type": "heading",
+      "props": {
+        "text": "Sign Off Template",
+        "level": "h2",
+        "align": "center",
+        "color": "",
+        "width": 12,
+        "padding": 8,
+        "domains": [
+          "Population Health"
+        ]
+      }
+    },
+    {
+      "id": "bfaqei05",
+      "type": "divider",
+      "props": {
+        "color": "#d1d5db",
+        "thickness": 1,
+        "width": 12,
+        "padding": 8,
+        "domains": [
+          "Population Health"
+        ]
+      }
+    },
+    {
+      "id": "ba4e27wc",
+      "type": "card",
+      "props": {
+        "title": "Preventive Monitoring",
+        "body": "Fill in and generate the template.\n",
+        "items": [],
+        "image": "",
+        "linkText": "Open template",
+        "linkUrl": "",
+        "background": "#ffffff",
+        "feed": "",
+        "feedUrl": "",
+        "feedKey": "",
+        "feedDays": 30,
+        "feedMax": 5,
+        "width": 4,
+        "padding": 24
+      }
     }
   ],
   "settings": {
