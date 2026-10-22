@@ -341,6 +341,9 @@ body.admin { background: var(--ui-bg); font-family: var(--ui-font); color: var(-
   flex: none; width: 44px; text-align: center; border: 1px solid var(--ui-border);
   border-radius: 8px; padding: 4px 0; background: var(--ui-surface-2); line-height: 1.1;
 }
+.w-leave-heading { font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--ui-muted); }
+.w-leave-date.is-today { background: var(--accent, #2563eb); border-color: var(--accent, #2563eb); color: #fff; }
+.w-leave-date.is-today .month { color: inherit; opacity: .85; }
 .w-leave-date .day { font-weight: 700; font-size: 16px; }
 .w-leave-date .month { font-size: 10px; color: var(--ui-muted); }
 .w-leave-info { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; min-width: 0; }

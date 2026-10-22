@@ -229,7 +229,7 @@ const PH = (() => {
   }
 
   // ---------- Leave Tracker feed ----------
-  // Reads the Leave Tracker's Supabase REST API (same query as its "Upcoming Leave" box).
+  // Reads the Leave Tracker's Supabase REST API: people on leave today, then its "Upcoming Leave" box.
   const leaveCache = new Map(); // cache key -> { at, promise }; avoids refetching on every designer re-render
 
   function isoDate(d) { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
@@ -248,7 +248,8 @@ const PH = (() => {
         select: `id,start_date,end_date,number_of_days,profiles!employee_id${byDomain ? '!inner' : ''}(full_name${byDomain ? ',domain' : ''}),leave_types!leave_type_id(name,color)`,
         order: 'start_date'
       });
-      query.append('start_date', `gt.${isoDate(today)}`);
+      // Anyone whose leave overlaps today, plus leave starting within the window.
+      query.append('end_date', `gte.${isoDate(today)}`);
       query.append('start_date', `lte.${isoDate(until)}`);
       if (byDomain) query.append('profiles.domain', `eq.${domain}`);
       return fetch(`${url.replace(/\/+$/, '')}/rest/v1/leave_records?${query}`, {
@@ -288,18 +289,17 @@ const PH = (() => {
     const days = Math.max(1, Number(p.feedDays) || 30), max = Math.max(1, Number(p.feedMax) || 5);
 
     fetchUpcomingLeave(url, key, days, p.__domain || userDomain(getSession())).then(records => {
-      if (!records.length) {
-        box.replaceChildren(el('div', { class: 'w-leave-msg', text: `No leave scheduled in the next ${days} days.` }));
-        return;
-      }
-      const items = records.slice(0, max).map(r => {
+      const todayIso = isoDate(new Date());
+      const now = records.filter(r => r.start_date <= todayIso);   // on leave today (already started, not yet ended)
+      const upcoming = records.filter(r => r.start_date > todayIso);
+      const leaveItem = (r, isToday) => {
         const name = r.profiles?.full_name || 'Unknown';
         const type = r.leave_types?.name || 'Leave';
-        const [, m, d] = r.start_date.split('-').map(Number);
+        const [, m, d] = (isToday ? todayIso : r.start_date).split('-').map(Number);
         const n = Number(r.number_of_days);
         const range = r.end_date && r.end_date !== r.start_date ? `${shortDate(r.start_date)} – ${shortDate(r.end_date)}` : shortDate(r.start_date);
         return el('div', { class: 'w-leave-item' }, [
-          el('div', { class: 'w-leave-date' }, [el('div', { class: 'day', text: String(d) }), el('div', { class: 'month', text: MONTHS_SHORT[m - 1] })]),
+          el('div', { class: `w-leave-date${isToday ? ' is-today' : ''}` }, [el('div', { class: 'day', text: String(d) }), el('div', { class: 'month', text: MONTHS_SHORT[m - 1] })]),
           el('div', { class: 'w-leave-info' }, [
             el('div', { class: 'w-leave-name' }, [
               el('span', { class: 'w-leave-avatar', text: initials(name), style: { background: avatarColor(name) } }),
@@ -309,8 +309,18 @@ const PH = (() => {
             el('div', { class: 'w-leave-range', text: Number.isFinite(n) ? `${range} · ${n} day${n === 1 ? '' : 's'}` : range })
           ])
         ]);
-      });
-      if (records.length > max) items.push(el('div', { class: 'w-leave-msg', text: `+ ${records.length - max} more` }));
+      };
+      // People on leave today come first and use the "max people" budget before anyone upcoming.
+      const shownNow = now.slice(0, max);
+      const shownUpcoming = upcoming.slice(0, Math.max(0, max - shownNow.length));
+      const hidden = records.length - shownNow.length - shownUpcoming.length;
+      const heading = (text) => el('div', { class: 'w-leave-heading', text });
+      const items = [heading('On leave today')];
+      if (shownNow.length) items.push(...shownNow.map(r => leaveItem(r, true)));
+      else items.push(el('div', { class: 'w-leave-msg', text: 'No one is on leave today.' }));
+      if (shownUpcoming.length) items.push(heading('Upcoming'), ...shownUpcoming.map(r => leaveItem(r, false)));
+      else if (!upcoming.length) items.push(el('div', { class: 'w-leave-msg', text: `No upcoming leave in the next ${days} days.` }));
+      if (hidden > 0) items.push(el('div', { class: 'w-leave-msg', text: `+ ${hidden} more` }));
       box.replaceChildren(...items);
     }).catch(err => {
       box.replaceChildren(el('div', { class: 'w-leave-msg', text: `Couldn’t load upcoming leave (${err.message}).` }));
@@ -530,12 +540,12 @@ const PH = (() => {
         { key: 'background', label: 'Background', type: 'color' },
         { key: 'feed', label: 'Live content (replaces body)', type: 'select', options: [
           { value: '', label: 'None' },
-          { value: 'leave', label: 'Upcoming leave (Leave Tracker)' }
+          { value: 'leave', label: 'Leave Tracker (on leave today + upcoming)' }
         ] },
         { key: 'feedUrl', label: 'Leave Tracker Supabase URL', type: 'text' },
         { key: 'feedKey', label: 'Leave Tracker anon key (public key only, never service_role)', type: 'text' },
-        { key: 'feedDays', label: 'Upcoming leave: days ahead', type: 'number', min: 1, max: 365 },
-        { key: 'feedMax', label: 'Upcoming leave: max people shown', type: 'number', min: 1, max: 50 }
+        { key: 'feedDays', label: 'Leave: upcoming days ahead', type: 'number', min: 1, max: 365 },
+        { key: 'feedMax', label: 'Leave: max people shown (today first)', type: 'number', min: 1, max: 50 }
       ],
       render(p, theme) {
         const body = p.feed === 'leave' ? upcomingLeave(p) : p.body ? el('p', { text: p.body }) : null;
