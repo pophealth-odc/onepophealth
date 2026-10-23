@@ -195,6 +195,10 @@
           {
             "text": "ServiceNow",
             "url": "https://synapxe.service-now.com/now/nav/ui/classic/params/target/incident_list.do?sysparm_clear_stack%253Dtrue%3D?sysparm_clear_stack%3Dtrue"
+          },
+          {
+            "text": "Cloud Automation Portal",
+            "url": "https://autportal.hcloud.healthgrp.com.sg/#/login"
           }
         ],
         "image": "",
