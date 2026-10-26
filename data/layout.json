@@ -235,7 +235,8 @@
       "type": "divider",
       "props": {
         "domains": [
-          "Population Health"
+          "Population Health",
+          "Operations"
         ],
         "color": "#d1d5db",
         "thickness": 1,
