@@ -58,5 +58,10 @@
     "username": "jian",
     "role": "User",
     "domain": "Operations"
+  },
+  {
+    "username": "ira",
+    "role": "Approver",
+    "domain": "Operations"
   }
 ]
