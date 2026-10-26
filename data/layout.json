@@ -291,7 +291,8 @@
         "width": 12,
         "padding": 8,
         "domains": [
-          "Population Health"
+          "Population Health",
+          "Operations"
         ]
       }
     },
@@ -304,7 +305,8 @@
         "width": 12,
         "padding": 8,
         "domains": [
-          "Population Health"
+          "Population Health",
+          "Operations"
         ]
       }
     },
